@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import Modal from '../components/ui/Modal';
@@ -128,13 +129,13 @@ export default function AdminPage() {
   const statusBars = Object.entries(summary.salesByStatus || {});
 
   return (
-    <section className="admin-shell">
+    <section className={`admin-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''}`}>
         <button className="sidebar-toggle" onClick={() => setCollapsed((v) => !v)}>{collapsed ? '>>' : '<<'}</button>
         <h2>Painel</h2>
         {['dashboard', 'usuarios', 'produtos', 'relatorios', 'config'].map((item) => (
           <button key={item} className={`side-item ${tab === item ? 'active' : ''}`} onClick={() => setTab(item)}>
-            {item[0].toUpperCase() + item.slice(1)}
+            <span>{item[0].toUpperCase() + item.slice(1)}</span>
           </button>
         ))}
       </aside>
@@ -146,6 +147,7 @@ export default function AdminPage() {
             <p>Gestao segura e centralizada</p>
           </div>
           <div className="admin-nav-actions">
+            <Link to="/" className="btn btn-secondary">Voltar para loja</Link>
             <span className="notif">3</span>
             <div className="admin-user-pill">
               <div className="avatar">{(user?.name || 'A')[0]}</div>
@@ -174,7 +176,10 @@ export default function AdminPage() {
                     <div className="status-bars">
                       {statusBars.length ? statusBars.map(([name, value]) => (
                         <div key={name}>
-                          <div className="bar-head"><span>{statusLabel[name] || name}</span><strong>{value}</strong></div>
+                          <div className="bar-head">
+                            <span className={`status-chip ${name}`}>{statusLabel[name] || name}</span>
+                            <strong className="status-value">{value}</strong>
+                          </div>
                           <div className="bar-track"><div className="bar-fill" style={{ width: `${Math.max(8, (value / summary.totals.orders) * 100)}%` }} /></div>
                         </div>
                       )) : <p>Sem dados de vendas.</p>}

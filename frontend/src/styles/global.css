@@ -444,6 +444,7 @@ body {
   gap: 1rem;
   min-height: calc(100vh - 3rem);
 }
+.admin-shell.sidebar-collapsed { grid-template-columns: 78px 1fr; }
 .admin-sidebar {
   background: linear-gradient(180deg, #06142c, #0f172a);
   color: #e6ecff;
@@ -455,6 +456,7 @@ body {
   gap: 0.5rem;
 }
 .admin-sidebar.collapsed { grid-template-columns: 1fr; width: 78px; overflow: hidden; }
+.admin-sidebar.collapsed h2 { display: none; }
 .sidebar-toggle {
   border: 1px solid #365894;
   background: transparent;
@@ -471,8 +473,19 @@ body {
   padding: 0.65rem 0.7rem;
   border-radius: 10px;
   cursor: pointer;
+  white-space: nowrap;
 }
 .side-item.active, .side-item:hover { background: #1f2e4f; color: #fff; }
+.admin-sidebar.collapsed .side-item {
+  display: grid;
+  place-items: center;
+  padding: 0.65rem 0.3rem;
+}
+.admin-sidebar.collapsed .side-item span {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
 .admin-main { display: grid; gap: 1rem; }
 .admin-navbar {
   background: linear-gradient(120deg, #0b1f43, #102a63 50%, #1f2e4f);
@@ -523,8 +536,31 @@ body {
 .admin-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
 .status-bars { display: grid; gap: 0.55rem; }
 .bar-head { display: flex; justify-content: space-between; font-size: 0.9rem; }
-.bar-track { height: 8px; border-radius: 999px; background: #e5ecfb; overflow: hidden; }
-.bar-fill { height: 8px; border-radius: 999px; background: linear-gradient(90deg, #1f5ad1, #10b981); }
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-weight: 800;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+.status-chip.pago {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #065f46;
+}
+.status-value {
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: #0f2f75;
+}
+.bar-track { height: 10px; border-radius: 999px; background: #e5ecfb; overflow: hidden; box-shadow: inset 0 1px 2px rgba(15, 31, 61, 0.14); }
+.bar-fill { height: 10px; border-radius: 999px; background: linear-gradient(90deg, #1f5ad1, #10b981); box-shadow: 0 0 0 1px rgba(255,255,255,0.25), 0 4px 12px rgba(16, 185, 129, 0.35); }
 .activity-list { display: grid; gap: 0.5rem; }
 .activity-row {
   display: flex;
