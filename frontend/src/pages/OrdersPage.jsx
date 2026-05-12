@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api, { getUploadsBaseUrl } from '../services/api';
 
 const fallback = 'https://via.placeholder.com/80x80?text=Sem+Img';
+const statusLabel = { pendente: 'pendente', pago: 'finalizado', enviado: 'enviado', entregue: 'entregue' };
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -20,7 +21,7 @@ export default function OrdersPage() {
         <article key={order.id} className="order-card">
           <div className="order-head">
             <h3>Pedido #{index + 1}</h3>
-            <span>{order.status}</span>
+            <span>{statusLabel[order.status] || order.status}</span>
           </div>
           <p>Total: R$ {Number(order.total).toFixed(2)}</p>
 

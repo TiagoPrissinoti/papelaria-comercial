@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 
 const initialForm = { name: '', description: '', price: '', stock: '', categoryId: '', image: null, images: [] };
 const pageSize = 6;
+const statusLabel = { pendente: 'pendente', pago: 'finalizado', enviado: 'enviado', entregue: 'entregue' };
 
 export default function AdminPage() {
   const { user, logout } = useAuth();
@@ -115,7 +116,7 @@ export default function AdminPage() {
 
   function printReport() {
     const content = orders
-      .map((o) => `<tr><td>#${o.id}</td><td>${o.user_name}</td><td>${o.status}</td><td>R$ ${Number(o.total).toFixed(2)}</td></tr>`)
+      .map((o) => `<tr><td>#${o.id}</td><td>${o.user_name}</td><td>${statusLabel[o.status] || o.status}</td><td>R$ ${Number(o.total).toFixed(2)}</td></tr>`)
       .join('');
     const win = window.open('', '_blank');
     if (!win) return;
@@ -173,7 +174,7 @@ export default function AdminPage() {
                     <div className="status-bars">
                       {statusBars.length ? statusBars.map(([name, value]) => (
                         <div key={name}>
-                          <div className="bar-head"><span>{name}</span><strong>{value}</strong></div>
+                          <div className="bar-head"><span>{statusLabel[name] || name}</span><strong>{value}</strong></div>
                           <div className="bar-track"><div className="bar-fill" style={{ width: `${Math.max(8, (value / summary.totals.orders) * 100)}%` }} /></div>
                         </div>
                       )) : <p>Sem dados de vendas.</p>}
@@ -266,7 +267,7 @@ export default function AdminPage() {
                 {orders.map((o) => (
                   <div key={o.id} className="cart-row">
                     <span>#{o.id} - {o.user_name}</span>
-                    <span>{o.status}</span>
+                    <span>{statusLabel[o.status] || o.status}</span>
                     <span>R$ {Number(o.total).toFixed(2)}</span>
                     <span>{new Date(o.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>
