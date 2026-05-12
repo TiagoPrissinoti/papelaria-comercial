@@ -37,6 +37,8 @@ export default function AdminPage() {
   const [userPage, setUserPage] = useState(1);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [categoryName, setCategoryName] = useState('');
+  const [editCategoryNames, setEditCategoryNames] = useState({});
 
   function notify(type, message) {
     setToast({ type, message });
@@ -59,6 +61,13 @@ export default function AdminPage() {
       setOrders(o.data);
       setUsers(u.data);
       setSummary(s.data);
+      setEditCategoryNames((prev) => {
+        const next = { ...prev };
+        for (const category of c.data) {
+          if (!next[category.id]) next[category.id] = category.name;
+        }
+        return next;
+      });
     } finally {
       setLoading(false);
     }
@@ -101,6 +110,23 @@ export default function AdminPage() {
   async function deleteProduct(id) {
     await api.delete(`/products/${id}`);
     notify('success', 'Produto removido.');
+    await loadData();
+  }
+
+  async function createCategory(event) {
+    event.preventDefault();
+    if (!categoryName.trim()) return;
+    await api.post('/categories', { name: categoryName.trim() });
+    setCategoryName('');
+    notify('success', 'Categoria criada com sucesso.');
+    await loadData();
+  }
+
+  async function renameCategory(categoryId) {
+    const nextName = (editCategoryNames[categoryId] || '').trim();
+    if (!nextName) return;
+    await api.put(`/categories/${categoryId}`, { name: nextName });
+    notify('success', 'Categoria atualizada.');
     await loadData();
   }
 
@@ -257,6 +283,34 @@ export default function AdminPage() {
                 <div className="section-head section-head-action">
                   <h2>Gerenciamento de produtos</h2>
                   <Button onClick={() => setModalOpen(true)}>Novo produto</Button>
+                </div>
+                <form className="admin-inline-form" onSubmit={createCategory}>
+                  <Input
+                    placeholder="Nome da nova categoria"
+                    value={categoryName}
+                    onChange={(event) => setCategoryName(event.target.value)}
+                    required
+                  />
+                  <Button type="submit" variant="secondary">Criar categoria</Button>
+                </form>
+                <div className="admin-category-list">
+                  {categories.map((category) => (
+                    <form
+                      key={category.id}
+                      className="admin-category-row"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        renameCategory(category.id);
+                      }}
+                    >
+                      <Input
+                        value={editCategoryNames[category.id] || ''}
+                        onChange={(event) => setEditCategoryNames((prev) => ({ ...prev, [category.id]: event.target.value }))}
+                        required
+                      />
+                      <Button type="submit" variant="secondary">Renomear</Button>
+                    </form>
+                  ))}
                 </div>
                 {products.map((product) => (
                   <div key={product.id} className="cart-row">
