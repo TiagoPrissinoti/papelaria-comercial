@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS products (
   name TEXT NOT NULL,
   description TEXT,
   price REAL NOT NULL CHECK(price >= 0),
+  cost_price REAL NOT NULL DEFAULT 0 CHECK(cost_price >= 0),
   stock INTEGER NOT NULL DEFAULT 0 CHECK(stock >= 0),
   category_id INTEGER,
   image TEXT,
@@ -54,6 +55,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   product_id INTEGER NOT NULL,
   quantity INTEGER NOT NULL CHECK(quantity > 0),
   unit_price REAL NOT NULL CHECK(unit_price >= 0),
+  cost_price REAL NOT NULL DEFAULT 0 CHECK(cost_price >= 0),
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 );

@@ -22,7 +22,8 @@ class OrderService {
         orderId,
         productId: item.product_id,
         quantity: item.quantity,
-        unitPrice: item.price
+        unitPrice: item.price,
+        costPrice: Number(item.cost_price || 0)
       });
       await Product.decreaseStock(item.product_id, item.quantity);
     }

@@ -10,12 +10,12 @@ class Order {
     return result.lastID;
   }
 
-  static async addItem({ orderId, productId, quantity, unitPrice }) {
+  static async addItem({ orderId, productId, quantity, unitPrice, costPrice }) {
     const db = await getDb();
     await db.run(
-      `INSERT INTO order_items (order_id, product_id, quantity, unit_price)
-       VALUES (?, ?, ?, ?)`,
-      [orderId, productId, quantity, unitPrice]
+      `INSERT INTO order_items (order_id, product_id, quantity, unit_price, cost_price)
+       VALUES (?, ?, ?, ?, ?)`,
+      [orderId, productId, quantity, unitPrice, costPrice]
     );
   }
 

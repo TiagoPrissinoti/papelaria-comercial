@@ -21,11 +21,11 @@ function normalizeProduct(product) {
 class Product {
   static async create(data) {
     const db = await getDb();
-    const { name, description, price, stock, categoryId, image, images = [] } = data;
+    const { name, description, price, costPrice = 0, stock, categoryId, image, images = [] } = data;
     const result = await db.run(
-      `INSERT INTO products (name, description, price, stock, category_id, image, images)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [name, description, price, stock, categoryId || null, image || null, JSON.stringify(images)]
+      `INSERT INTO products (name, description, price, cost_price, stock, category_id, image, images)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, description, price, costPrice, stock, categoryId || null, image || null, JSON.stringify(images)]
     );
     return this.findById(result.lastID);
   }
@@ -66,6 +66,7 @@ class Product {
       name: data.name ?? current.name,
       description: data.description ?? current.description,
       price: data.price ?? current.price,
+      cost_price: data.costPrice ?? current.cost_price,
       stock: data.stock ?? current.stock,
       category_id: data.categoryId ?? current.category_id,
       image: data.image ?? current.image,
@@ -74,12 +75,13 @@ class Product {
 
     await db.run(
       `UPDATE products
-       SET name = ?, description = ?, price = ?, stock = ?, category_id = ?, image = ?, images = ?
+       SET name = ?, description = ?, price = ?, cost_price = ?, stock = ?, category_id = ?, image = ?, images = ?
        WHERE id = ?`,
       [
         updated.name,
         updated.description,
         updated.price,
+        updated.cost_price,
         updated.stock,
         updated.category_id,
         updated.image,

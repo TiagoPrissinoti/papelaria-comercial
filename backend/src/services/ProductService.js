@@ -24,6 +24,7 @@ class ProductService {
       ...payload,
       categoryId: payload.categoryId ? Number(payload.categoryId) : null,
       price: Number(payload.price),
+      costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : 0,
       stock: Number(payload.stock),
       image: main,
       images: gallery
@@ -40,6 +41,7 @@ class ProductService {
       ...payload,
       categoryId: payload.categoryId ? Number(payload.categoryId) : undefined,
       price: payload.price !== undefined ? Number(payload.price) : undefined,
+      costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : undefined,
       stock: payload.stock !== undefined ? Number(payload.stock) : undefined,
       image: main || current.image,
       images: gallery.length ? gallery : current.images

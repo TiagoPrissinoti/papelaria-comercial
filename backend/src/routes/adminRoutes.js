@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const AppError = require('../utils/AppError');
+const { getDb } = require('../database/connection');
 
 const router = Router();
 
@@ -47,8 +48,18 @@ router.get('/reports/summary', asyncHandler(async (req, res) => {
     Product.findAll({ includeInactive: true }),
     Order.findAll()
   ]);
+  const db = await getDb();
+  const financial = await db.get(
+    `SELECT
+      COALESCE(SUM(quantity * unit_price), 0) AS gross_revenue,
+      COALESCE(SUM(quantity * cost_price), 0) AS total_cost,
+      COALESCE(SUM(quantity * (unit_price - cost_price)), 0) AS total_profit
+     FROM order_items`
+  );
 
-  const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const totalRevenue = Number(financial?.gross_revenue || 0);
+  const totalCost = Number(financial?.total_cost || 0);
+  const totalProfit = Number(financial?.total_profit || 0);
   const recentOrders = orders.slice(0, 8);
   const salesByStatus = orders.reduce((acc, order) => {
     const key = order.status || 'pendente';
@@ -61,7 +72,9 @@ router.get('/reports/summary', asyncHandler(async (req, res) => {
       users: users.length,
       products: products.length,
       orders: orders.length,
-      revenue: totalRevenue
+      revenue: totalRevenue,
+      cost: totalCost,
+      profit: totalProfit
     },
     recentOrders,
     salesByStatus
@@ -85,6 +98,14 @@ router.get('/reports/export.csv', asyncHandler(async (req, res) => {
   }
 
   const orders = await Order.findAll();
+  const db = await getDb();
+  const rows = await db.all(
+    `SELECT o.id, COALESCE(SUM(oi.quantity * (oi.unit_price - oi.cost_price)), 0) AS profit
+     FROM orders o
+     LEFT JOIN order_items oi ON oi.order_id = o.id
+     GROUP BY o.id`
+  );
+  const profitByOrderId = new Map(rows.map((row) => [row.id, Number(row.profit || 0)]));
   const filtered = orders.filter((order) => {
     const createdAt = new Date(order.created_at);
     if (from && createdAt < from) return false;
@@ -92,10 +113,10 @@ router.get('/reports/export.csv', asyncHandler(async (req, res) => {
     return true;
   });
 
-  const lines = ['id,cliente,email,total,status,criado_em'];
+  const lines = ['id,cliente,email,total,lucro,status,criado_em'];
   for (const order of filtered) {
     lines.push(
-      `${order.id},"${order.user_name}","${order.user_email}",${Number(order.total).toFixed(2)},${order.status},"${order.created_at}"`
+      `${order.id},"${order.user_name}","${order.user_email}",${Number(order.total).toFixed(2)},${Number(profitByOrderId.get(order.id) || 0).toFixed(2)},${order.status},"${order.created_at}"`
     );
   }
 

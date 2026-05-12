@@ -6,7 +6,7 @@ import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
-const initialForm = { name: '', description: '', price: '', stock: '', categoryId: '', image: null, images: [] };
+const initialForm = { name: '', description: '', price: '', costPrice: '', stock: '', categoryId: '', image: null, images: [] };
 const pageSize = 6;
 const statusLabel = { pendente: 'pendente', pago: 'finalizado', enviado: 'enviado', entregue: 'entregue' };
 
@@ -22,7 +22,11 @@ export default function AdminPage() {
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
-  const [summary, setSummary] = useState({ totals: { users: 0, products: 0, orders: 0, revenue: 0 }, salesByStatus: {}, recentOrders: [] });
+  const [summary, setSummary] = useState({
+    totals: { users: 0, products: 0, orders: 0, revenue: 0, cost: 0, profit: 0 },
+    salesByStatus: {},
+    recentOrders: []
+  });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [preview, setPreview] = useState([]);
@@ -81,6 +85,7 @@ export default function AdminPage() {
     data.append('name', form.name);
     data.append('description', form.description);
     data.append('price', form.price);
+    data.append('costPrice', form.costPrice || 0);
     data.append('stock', form.stock);
     data.append('categoryId', form.categoryId);
     if (form.image) data.append('image', form.image);
@@ -173,6 +178,8 @@ export default function AdminPage() {
                   <article><h3>{summary.totals.orders}</h3><p>Total de vendas</p></article>
                   <article><h3>{summary.totals.products}</h3><p>Produtos cadastrados</p></article>
                   <article><h3>R$ {Number(summary.totals.revenue).toFixed(2)}</h3><p>Receita total</p></article>
+                  <article><h3>R$ {Number(summary.totals.cost).toFixed(2)}</h3><p>Custo total</p></article>
+                  <article><h3>R$ {Number(summary.totals.profit).toFixed(2)}</h3><p>Lucro real</p></article>
                 </div>
                 <div className="admin-grid-2">
                   <section className="admin-panel-block">
@@ -255,6 +262,7 @@ export default function AdminPage() {
                   <div key={product.id} className="cart-row">
                     <span>{product.name}</span>
                     <span>R$ {Number(product.price).toFixed(2)}</span>
+                    <span>Custo: R$ {Number(product.cost_price || 0).toFixed(2)}</span>
                     <span>Estoque: {product.stock}</span>
                     <span>{product.category_name || 'Sem categoria'}</span>
                     <Button variant="secondary" onClick={() => deleteProduct(product.id)}>Excluir</Button>
@@ -312,6 +320,7 @@ export default function AdminPage() {
           <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           <Input placeholder="Descricao" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
           <Input placeholder="Preco" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+          <Input placeholder="Custo de compra" type="number" step="0.01" min="0" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} required />
           <Input placeholder="Estoque" type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required />
           <select className="input" value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} required>
             <option value="">Selecione a categoria</option>

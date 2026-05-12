@@ -522,7 +522,7 @@ body {
 .admin-user-pill small { color: #c2d3ff; display: block; text-transform: uppercase; font-size: 0.68rem; }
 .admin-kpis {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 0.8rem;
 }
 .admin-kpis article {

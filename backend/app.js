@@ -24,11 +24,21 @@ app.use(errorHandler);
   const columns = await db.all("PRAGMA table_info(products)");
   const hasImages = columns.some((column) => column.name === 'images');
   const hasIsActive = columns.some((column) => column.name === 'is_active');
+  const hasCostPrice = columns.some((column) => column.name === 'cost_price');
   if (!hasImages) {
     await db.exec("ALTER TABLE products ADD COLUMN images TEXT NOT NULL DEFAULT '[]'");
   }
   if (!hasIsActive) {
     await db.exec("ALTER TABLE products ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!hasCostPrice) {
+    await db.exec('ALTER TABLE products ADD COLUMN cost_price REAL NOT NULL DEFAULT 0');
+  }
+
+  const orderItemColumns = await db.all("PRAGMA table_info(order_items)");
+  const hasOrderItemCostPrice = orderItemColumns.some((column) => column.name === 'cost_price');
+  if (!hasOrderItemCostPrice) {
+    await db.exec('ALTER TABLE order_items ADD COLUMN cost_price REAL NOT NULL DEFAULT 0');
   }
 })();
 

@@ -4,7 +4,7 @@ class Cart {
   static async getByUser(userId) {
     const db = await getDb();
     return db.all(
-      `SELECT c.product_id, c.quantity, p.name, p.price, p.stock, p.image
+      `SELECT c.product_id, c.quantity, p.name, p.price, p.cost_price, p.stock, p.image
        FROM cart c
        INNER JOIN products p ON p.id = c.product_id
        WHERE c.user_id = ?`,
