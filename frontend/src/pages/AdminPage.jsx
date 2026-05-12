@@ -14,6 +14,7 @@ export default function AdminPage() {
   const { user, logout } = useAuth();
   const [tab, setTab] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('admin_dark_mode') === '1');
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
@@ -60,6 +61,9 @@ export default function AdminPage() {
   }
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    localStorage.setItem('admin_dark_mode', darkMode ? '1' : '0');
+  }, [darkMode]);
 
   const filteredUsers = useMemo(() => users.filter((item) => {
     const term = searchUser.trim().toLowerCase();
@@ -129,7 +133,7 @@ export default function AdminPage() {
   const statusBars = Object.entries(summary.salesByStatus || {});
 
   return (
-    <section className={`admin-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <section className={`admin-shell ${collapsed ? 'sidebar-collapsed' : ''} ${darkMode ? 'dark-theme' : ''}`}>
       <aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''}`}>
         <button className="sidebar-toggle" onClick={() => setCollapsed((v) => !v)}>{collapsed ? '>>' : '<<'}</button>
         <h2>Painel</h2>
@@ -283,7 +287,20 @@ export default function AdminPage() {
             {tab === 'config' && (
               <section className="admin-panel-block">
                 <h2>Configuracoes</h2>
-                <p>Modo escuro opcional e preferencias avancadas podem ser adicionados aqui.</p>
+                <div className="config-row">
+                  <div>
+                    <strong>Modo escuro</strong>
+                    <p>Ative um tema escuro premium para o painel administrativo.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`theme-switch ${darkMode ? 'active' : ''}`}
+                    onClick={() => setDarkMode((value) => !value)}
+                    aria-label="Alternar modo escuro"
+                  >
+                    <span />
+                  </button>
+                </div>
               </section>
             )}
           </>
