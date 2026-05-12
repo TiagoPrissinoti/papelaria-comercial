@@ -12,14 +12,16 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/OrdersPage';
 import AdminPage from './pages/AdminPage';
+import AccessDeniedPage from './pages/AccessDeniedPage';
 
 export default function App() {
   const location = useLocation();
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/cadastro';
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   return (
     <div className="app-shell">
-      <Navbar />
+      {!isAdminRoute && <Navbar />}
       <main className={`container page-content ${isAuthRoute ? 'auth-main' : ''}`}>
         <Routes>
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
@@ -30,10 +32,11 @@ export default function App() {
           <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
           <Route path="/meus-pedidos" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+          <Route path="/acesso-negado" element={<ProtectedRoute><AccessDeniedPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </main>
-      {!isAuthRoute && <Footer />}
+      {!isAuthRoute && !isAdminRoute && <Footer />}
     </div>
   );
 }
