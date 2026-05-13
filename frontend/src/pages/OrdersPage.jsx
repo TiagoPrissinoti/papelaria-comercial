@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api, { getUploadsBaseUrl } from '../services/api';
+import Modal from '../components/ui/Modal';
 
 const fallback = 'https://via.placeholder.com/80x80?text=Sem+Img';
 const statusLabel = {
@@ -26,6 +27,8 @@ function formatDateTime(value) {
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [trackingOrder, setTrackingOrder] = useState(null);
+  const [manageOrder, setManageOrder] = useState(null);
 
   useEffect(() => {
     api.get('/orders/my').then((res) => setOrders(res.data)).finally(() => setLoading(false));
@@ -45,8 +48,12 @@ export default function OrdersPage() {
           <p>Total: R$ {Number(order.total).toFixed(2)} | Rastreio: GFL-{order.id}</p>
 
           <div className="order-actions-row">
-            <button type="button" className="btn btn-secondary">Rastreio detalhado</button>
-            <button type="button" className="btn btn-primary">Gerenciar pedido</button>
+            <button type="button" className="btn btn-secondary" onClick={() => setTrackingOrder(order)}>
+              Rastreio detalhado
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => setManageOrder(order)}>
+              Gerenciar pedido
+            </button>
           </div>
 
           <div className="order-flow">
@@ -83,6 +90,53 @@ export default function OrdersPage() {
           </div>
         </article>
       ))}
+
+      <Modal
+        title={trackingOrder ? `Rastreio do pedido #${trackingOrder.id}` : 'Rastreio do pedido'}
+        open={Boolean(trackingOrder)}
+        onClose={() => setTrackingOrder(null)}
+      >
+        {trackingOrder && (
+          <div className="order-modal-body">
+            <p><strong>Codigo de rastreio:</strong> GFL-{trackingOrder.id}</p>
+            <p><strong>Status atual:</strong> {statusLabel[trackingOrder.status] || trackingOrder.status}</p>
+            <p><strong>Ultima atualizacao:</strong> {formatDateTime(trackingOrder.created_at)}</p>
+            <div className="order-flow compact">
+              {flowSteps.map((step, stepIndex) => {
+                const currentIndex = flowSteps.findIndex((item) => item.key === trackingOrder.status);
+                const isDone = stepIndex <= (currentIndex < 0 ? 0 : currentIndex);
+                return (
+                  <div key={step.key} className={`flow-step ${isDone ? 'done' : ''}`}>
+                    <div className="flow-dot" />
+                    <div className="flow-copy">
+                      <strong>{step.title}</strong>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        title={manageOrder ? `Gerenciar pedido #${manageOrder.id}` : 'Gerenciar pedido'}
+        open={Boolean(manageOrder)}
+        onClose={() => setManageOrder(null)}
+      >
+        {manageOrder && (
+          <div className="order-modal-body">
+            <p><strong>Status:</strong> {statusLabel[manageOrder.status] || manageOrder.status}</p>
+            <p><strong>Total:</strong> R$ {Number(manageOrder.total).toFixed(2)}</p>
+            <p><strong>Data:</strong> {formatDateTime(manageOrder.created_at)}</p>
+            <ul className="order-manage-list">
+              <li>Para ajustes ou cancelamento, entre em contato com o suporte informando o numero do pedido.</li>
+              <li>Assim que o pedido for preparado, o status muda para "em andamento".</li>
+              <li>Quando sair para entrega, o status muda para "saiu para entrega".</li>
+            </ul>
+          </div>
+        )}
+      </Modal>
     </section>
   );
 }

@@ -285,6 +285,9 @@ body {
   gap: 0;
   margin-bottom: 1rem;
 }
+.order-flow.compact {
+  margin-bottom: 0;
+}
 .flow-step {
   position: relative;
   display: grid;
@@ -331,6 +334,18 @@ body {
 .flow-copy small {
   font-size: 0.72rem;
   color: #64748b;
+}
+.order-modal-body {
+  display: grid;
+  gap: 0.55rem;
+}
+.order-manage-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+  color: #334155;
+}
+.order-manage-list li {
+  margin-bottom: 0.35rem;
 }
 .order-item-row {
   display: grid;
