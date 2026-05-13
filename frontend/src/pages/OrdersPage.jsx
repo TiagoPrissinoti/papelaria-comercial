@@ -43,7 +43,6 @@ export default function OrdersPage() {
         <article key={order.id} className="order-card">
           <div className="order-head">
             <h3>Pedido #{index + 1}</h3>
-            <span>{statusLabel[order.status] || order.status}</span>
           </div>
           <p>Total: R$ {Number(order.total).toFixed(2)} | Rastreio: GFL-{order.id}</p>
 
