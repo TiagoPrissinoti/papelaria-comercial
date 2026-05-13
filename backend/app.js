@@ -44,6 +44,7 @@ app.use(errorHandler);
   const orderTable = await db.get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'orders'");
   const orderSql = String(orderTable?.sql || '');
   const hasEmAndamentoStatus = orderSql.includes("'em_andamento'");
+  const hasHiddenByUser = orderSql.includes('hidden_by_user');
   if (!hasEmAndamentoStatus) {
     await db.exec('PRAGMA foreign_keys = OFF');
     await db.exec(`
@@ -63,6 +64,9 @@ app.use(errorHandler);
       COMMIT;
     `);
     await db.exec('PRAGMA foreign_keys = ON');
+  }
+  if (!hasHiddenByUser) {
+    await db.exec('ALTER TABLE orders ADD COLUMN hidden_by_user INTEGER NOT NULL DEFAULT 0 CHECK(hidden_by_user IN (0, 1))');
   }
 
   const orderItemsTable = await db.get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'order_items'");

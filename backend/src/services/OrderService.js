@@ -60,6 +60,17 @@ class OrderService {
 
     return Order.updateStatus(orderId, status);
   }
+
+  static async hideDeliveredFromHistory(orderId, userId) {
+    const order = await Order.findById(orderId);
+    if (!order) throw new AppError('Pedido nao encontrado', 404);
+    if (order.user_id !== userId) throw new AppError('Acesso negado a este pedido', 403);
+    if (order.status !== 'entregue') {
+      throw new AppError('Somente pedidos entregues podem ser removidos do historico', 400);
+    }
+    await Order.hideByUser(orderId, userId);
+    return { success: true };
+  }
 }
 
 module.exports = OrderService;

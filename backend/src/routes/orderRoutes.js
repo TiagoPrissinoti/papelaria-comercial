@@ -8,6 +8,7 @@ router.use(authMiddleware);
 router.post('/checkout', controller.createFromCart);
 router.get('/my', controller.myOrders);
 router.post('/:id/pay', controller.payOrder);
+router.delete('/:id/history', controller.hideFromHistory);
 router.get('/', isAdmin, controller.adminList);
 router.patch('/:id/status', isAdmin, controller.updateStatus);
 

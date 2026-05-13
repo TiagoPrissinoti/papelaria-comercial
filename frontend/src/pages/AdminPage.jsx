@@ -154,6 +154,16 @@ export default function AdminPage() {
     await loadData();
   }
 
+  async function resetStoreData() {
+    const confirmed = window.confirm(
+      'Isso vai apagar todos os pedidos, produtos, categorias e resetar os indicadores do painel. Deseja continuar?'
+    );
+    if (!confirmed) return;
+    await api.delete('/admin/reset-store-data');
+    notify('success', 'Dados da loja limpos com sucesso.');
+    await loadData();
+  }
+
   function buildExportUrl(kind) {
     const params = new URLSearchParams();
     params.set('kind', kind);
@@ -401,6 +411,13 @@ export default function AdminPage() {
                   >
                     <span />
                   </button>
+                </div>
+                <div className="config-row config-danger-zone">
+                  <div>
+                    <strong>Limpar dados da loja</strong>
+                    <p>Apaga pedidos, produtos e categorias. Os indicadores de vendas voltam para zero.</p>
+                  </div>
+                  <Button variant="secondary" onClick={resetStoreData}>Limpar dados</Button>
                 </div>
               </section>
             )}

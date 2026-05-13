@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS orders (
   user_id INTEGER NOT NULL,
   total REAL NOT NULL CHECK(total >= 0),
   status TEXT NOT NULL CHECK(status IN ('pendente', 'pago', 'em_andamento', 'enviado', 'entregue')) DEFAULT 'pendente',
+  hidden_by_user INTEGER NOT NULL DEFAULT 0 CHECK(hidden_by_user IN (0, 1)),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

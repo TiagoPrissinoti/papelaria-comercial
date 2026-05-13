@@ -21,3 +21,8 @@ exports.updateStatus = asyncHandler(async (req, res) => {
 exports.payOrder = asyncHandler(async (req, res) => {
   res.json(await OrderService.processPayment(Number(req.params.id)));
 });
+
+exports.hideFromHistory = asyncHandler(async (req, res) => {
+  await OrderService.hideDeliveredFromHistory(Number(req.params.id), req.user.id);
+  res.status(204).send();
+});

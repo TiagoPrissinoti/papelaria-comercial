@@ -125,4 +125,21 @@ router.get('/reports/export.csv', asyncHandler(async (req, res) => {
   return res.send(lines.join('\n'));
 }));
 
+router.delete('/reset-store-data', asyncHandler(async (_req, res) => {
+  const db = await getDb();
+  await db.exec('PRAGMA foreign_keys = OFF');
+  await db.exec(`
+    BEGIN TRANSACTION;
+    DELETE FROM cart;
+    DELETE FROM order_items;
+    DELETE FROM orders;
+    DELETE FROM products;
+    DELETE FROM categories;
+    DELETE FROM sqlite_sequence WHERE name IN ('cart', 'order_items', 'orders', 'products', 'categories');
+    COMMIT;
+  `);
+  await db.exec('PRAGMA foreign_keys = ON');
+  res.status(204).send();
+}));
+
 module.exports = router;

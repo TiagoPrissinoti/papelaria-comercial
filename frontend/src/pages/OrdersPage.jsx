@@ -34,6 +34,14 @@ export default function OrdersPage() {
     api.get('/orders/my').then((res) => setOrders(res.data)).finally(() => setLoading(false));
   }, []);
 
+  async function removeDeliveredOrder(orderId) {
+    if (!window.confirm('Remover este pedido entregue do seu historico?')) return;
+    await api.delete(`/orders/${orderId}/history`);
+    setOrders((prev) => prev.filter((order) => order.id !== orderId));
+    if (trackingOrder?.id === orderId) setTrackingOrder(null);
+    if (manageOrder?.id === orderId) setManageOrder(null);
+  }
+
   if (loading) return <p>Carregando pedidos...</p>;
 
   return (
@@ -53,6 +61,11 @@ export default function OrdersPage() {
             <button type="button" className="btn btn-primary" onClick={() => setManageOrder(order)}>
               Gerenciar pedido
             </button>
+            {order.status === 'entregue' && (
+              <button type="button" className="btn btn-secondary danger-btn" onClick={() => removeDeliveredOrder(order.id)}>
+                Remover do historico
+              </button>
+            )}
           </div>
 
           <div className="order-flow">

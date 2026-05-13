@@ -21,7 +21,10 @@ class Order {
 
   static async findByUser(userId) {
     const db = await getDb();
-    const orders = await db.all('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+    const orders = await db.all(
+      'SELECT * FROM orders WHERE user_id = ? AND hidden_by_user = 0 ORDER BY created_at DESC',
+      [userId]
+    );
 
     for (const order of orders) {
       order.items = await db.all(
@@ -55,6 +58,11 @@ class Order {
     const db = await getDb();
     await db.run('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
     return this.findById(orderId);
+  }
+
+  static async hideByUser(orderId, userId) {
+    const db = await getDb();
+    await db.run('UPDATE orders SET hidden_by_user = 1 WHERE id = ? AND user_id = ?', [orderId, userId]);
   }
 }
 
