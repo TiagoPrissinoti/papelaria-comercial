@@ -273,6 +273,65 @@ body {
 .product-price { font-size: 1.9rem; color: var(--blue-900); display: block; margin: 0.5rem 0; }
 .order-head { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
 .order-items-list { display: grid; gap: 0.6rem; }
+.order-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin: 0.85rem 0 1rem;
+}
+.order-flow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  margin-bottom: 1rem;
+}
+.flow-step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding-top: 0.2rem;
+}
+.flow-step::before {
+  content: '';
+  position: absolute;
+  top: 11px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: #d1d5db;
+}
+.flow-step:first-child::before {
+  display: none;
+}
+.flow-step.done::before {
+  background: #f97316;
+}
+.flow-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  background: #fff;
+  z-index: 1;
+}
+.flow-step.done .flow-dot {
+  border-color: #f97316;
+  background: #f97316;
+}
+.flow-copy {
+  margin-top: 0.35rem;
+  display: grid;
+  gap: 0.2rem;
+}
+.flow-copy strong {
+  font-size: 0.8rem;
+  color: #334155;
+}
+.flow-copy small {
+  font-size: 0.72rem;
+  color: #64748b;
+}
 .order-item-row {
   display: grid;
   grid-template-columns: 56px 1fr;
@@ -428,6 +487,17 @@ body {
 @media (max-width: 720px) {
   .main-image { height: 290px; }
   .kpis { grid-template-columns: 1fr; }
+  .order-actions-row { grid-template-columns: 1fr; }
+  .order-flow { grid-template-columns: 1fr; gap: 0.55rem; }
+  .flow-step { justify-items: start; text-align: left; padding-left: 1rem; }
+  .flow-step::before {
+    top: -0.55rem;
+    left: 6px;
+    width: 2px;
+    height: calc(100% + 0.65rem);
+  }
+  .flow-step:first-child::before { display: block; top: 11px; height: calc(100% - 11px); }
+  .flow-copy { margin-top: -0.95rem; margin-left: 1.1rem; }
   .admin-inline-form { grid-template-columns: 1fr; }
   .admin-category-row { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; }

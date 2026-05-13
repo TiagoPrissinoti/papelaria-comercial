@@ -9,6 +9,19 @@ const statusLabel = {
   enviado: 'saiu para entrega',
   entregue: 'entregue'
 };
+const flowSteps = [
+  { key: 'pendente', title: 'Pedido recebido' },
+  { key: 'pago', title: 'Pagamento aprovado' },
+  { key: 'em_andamento', title: 'Em separacao' },
+  { key: 'enviado', title: 'Em transito' },
+  { key: 'entregue', title: 'Pedido entregue' }
+];
+
+function formatDateTime(value) {
+  if (!value) return '--/--/---- --:--';
+  const date = new Date(value);
+  return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+}
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -29,7 +42,28 @@ export default function OrdersPage() {
             <h3>Pedido #{index + 1}</h3>
             <span>{statusLabel[order.status] || order.status}</span>
           </div>
-          <p>Total: R$ {Number(order.total).toFixed(2)}</p>
+          <p>Total: R$ {Number(order.total).toFixed(2)} | Rastreio: GFL-{order.id}</p>
+
+          <div className="order-actions-row">
+            <button type="button" className="btn btn-secondary">Rastreio detalhado</button>
+            <button type="button" className="btn btn-primary">Gerenciar pedido</button>
+          </div>
+
+          <div className="order-flow">
+            {flowSteps.map((step, stepIndex) => {
+              const currentIndex = flowSteps.findIndex((item) => item.key === order.status);
+              const isDone = stepIndex <= (currentIndex < 0 ? 0 : currentIndex);
+              return (
+                <div key={step.key} className={`flow-step ${isDone ? 'done' : ''}`}>
+                  <div className="flow-dot" />
+                  <div className="flow-copy">
+                    <strong>{step.title}</strong>
+                    <small>{isDone ? formatDateTime(order.created_at) : '--/--/---- --:--'}</small>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           <div className="order-items-list">
             {order.items?.map((item) => (
