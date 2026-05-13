@@ -13,7 +13,7 @@ const statusLabel = { pendente: 'pendente', pago: 'finalizado', enviado: 'enviad
 export default function AdminPage() {
   const { user, logout } = useAuth();
   const [tab, setTab] = useState('dashboard');
-  const [collapsed, setCollapsed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('admin_dark_mode') === '1');
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
@@ -164,12 +164,19 @@ export default function AdminPage() {
   const statusBars = Object.entries(summary.salesByStatus || {});
 
   return (
-    <section className={`admin-shell ${collapsed ? 'sidebar-collapsed' : ''} ${darkMode ? 'dark-theme' : ''}`}>
-      <aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''}`}>
-        <button className="sidebar-toggle" onClick={() => setCollapsed((v) => !v)}>{collapsed ? '>>' : '<<'}</button>
+    <section className={`admin-shell ${menuOpen ? 'menu-open' : ''} ${darkMode ? 'dark-theme' : ''}`}>
+      {menuOpen && <button className="sidebar-backdrop" type="button" aria-label="Fechar menu" onClick={() => setMenuOpen(false)} />}
+      <aside className={`admin-sidebar ${menuOpen ? 'open' : ''}`}>
         <h2>Painel</h2>
         {['dashboard', 'usuarios', 'produtos', 'relatorios', 'config'].map((item) => (
-          <button key={item} className={`side-item ${tab === item ? 'active' : ''}`} onClick={() => setTab(item)}>
+          <button
+            key={item}
+            className={`side-item ${tab === item ? 'active' : ''}`}
+            onClick={() => {
+              setTab(item);
+              setMenuOpen(false);
+            }}
+          >
             <span>{item[0].toUpperCase() + item.slice(1)}</span>
           </button>
         ))}
@@ -177,6 +184,16 @@ export default function AdminPage() {
 
       <div className="admin-main">
         <header className="admin-navbar">
+          <button
+            type="button"
+            className="sidebar-toggle"
+            aria-label="Abrir menu"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
           <div>
             <strong>Area Administrativa</strong>
             <p>Gestao segura e centralizada</p>
