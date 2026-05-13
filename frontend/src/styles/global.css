@@ -280,6 +280,8 @@ body {
   margin: 0.85rem 0 1rem;
 }
 .order-flow {
+  position: relative;
+  z-index: 0;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 0;
@@ -316,7 +318,7 @@ body {
   border-radius: 50%;
   border: 2px solid #d1d5db;
   background: #fff;
-  z-index: 1;
+  z-index: 0;
 }
 .flow-step.done .flow-dot {
   border-color: #f97316;
@@ -397,8 +399,16 @@ body {
   display: grid;
   place-items: center;
   padding: 1rem;
+  z-index: 1000;
 }
-.modal { width: min(640px, 100%); background: var(--white); border-radius: 16px; padding: 1rem; }
+.modal {
+  position: relative;
+  z-index: 1001;
+  width: min(640px, 100%);
+  background: var(--white);
+  border-radius: 16px;
+  padding: 1rem;
+}
 .modal-header { display: flex; justify-content: space-between; align-items: center; }
 .admin-form { display: grid; gap: 0.65rem; }
 
