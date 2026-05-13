@@ -113,10 +113,10 @@ router.get('/reports/export.csv', asyncHandler(async (req, res) => {
     return true;
   });
 
-  const lines = ['id,cliente,email,total,lucro,status,criado_em'];
+  const lines = ['id,codigo_pedido,cliente,email,total,lucro,status,criado_em'];
   for (const order of filtered) {
     lines.push(
-      `${order.id},"${order.user_name}","${order.user_email}",${Number(order.total).toFixed(2)},${Number(profitByOrderId.get(order.id) || 0).toFixed(2)},${order.status},"${order.created_at}"`
+      `${order.id},"GFL-${order.id}","${order.user_name}","${order.user_email}",${Number(order.total).toFixed(2)},${Number(profitByOrderId.get(order.id) || 0).toFixed(2)},${order.status},"${order.created_at}"`
     );
   }
 

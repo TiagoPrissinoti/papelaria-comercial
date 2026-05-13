@@ -174,7 +174,7 @@ export default function AdminPage() {
 
   function printReport() {
     const content = orders
-      .map((o) => `<tr><td>#${o.id}</td><td>${o.user_name}</td><td>${statusLabel[o.status] || o.status}</td><td>R$ ${Number(o.total).toFixed(2)}</td></tr>`)
+      .map((o) => `<tr><td>#${o.id} (GFL-${o.id})</td><td>${o.user_name}</td><td>${statusLabel[o.status] || o.status}</td><td>R$ ${Number(o.total).toFixed(2)}</td></tr>`)
       .join('');
     const win = window.open('', '_blank');
     if (!win) return;
@@ -376,7 +376,10 @@ export default function AdminPage() {
                 </div>
                 {orders.map((o) => (
                   <div key={o.id} className="cart-row">
-                    <span>#{o.id} - {o.user_name}</span>
+                    <span>
+                      Pedido #{o.id} (GFL-{o.id})<br />
+                      <small>{o.user_name} - {new Date(o.created_at).toLocaleString('pt-BR')}</small>
+                    </span>
                     <select
                       className="input"
                       value={o.status}

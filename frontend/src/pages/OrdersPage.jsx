@@ -47,10 +47,10 @@ export default function OrdersPage() {
   return (
     <section>
       <h1>Meus pedidos</h1>
-      {orders.map((order, index) => (
+      {orders.map((order) => (
         <article key={order.id} className="order-card">
           <div className="order-head">
-            <h3>Pedido #{index + 1}</h3>
+            <h3>Pedido #{order.id}</h3>
           </div>
           <p>Total: R$ {Number(order.total).toFixed(2)} | Rastreio: GFL-{order.id}</p>
 
