@@ -260,6 +260,7 @@ body {
 .btn-secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
 
 .product-layout { display: grid; grid-template-columns: 1.15fr 1fr; gap: 1.2rem; }
+.reviews-page { display: grid; gap: 1rem; }
 .gallery-wrap, .product-info, .order-card, .auth-card, .admin-panel-block {
   background: var(--white);
   border: 1px solid var(--line);
@@ -368,6 +369,63 @@ body {
 }
 .order-item-image { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; background: #f8fbff; }
 .order-item-row p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.88rem; }
+.reviews-summary,
+.review-form-block,
+.review-list-block {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1rem;
+}
+.reviews-summary { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1rem; }
+.average-line { display: flex; align-items: center; gap: 0.6rem; }
+.average-line strong { font-size: 2rem; color: #0f2f75; }
+.review-stars { display: inline-flex; gap: 0.15rem; }
+.review-stars .star {
+  border: 0;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 1.2rem;
+  padding: 0;
+}
+.review-stars .star.on { color: #f59e0b; }
+.review-stars.interactive .star { cursor: pointer; transform: scale(1); transition: transform 0.16s ease; }
+.review-stars.interactive .star:hover { transform: scale(1.15); }
+.distribution { display: grid; gap: 0.3rem; margin-top: 0.7rem; }
+.dist-row { display: grid; grid-template-columns: 40px 1fr 34px; align-items: center; gap: 0.45rem; }
+.dist-track { height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+.dist-fill { height: 8px; border-radius: 999px; background: linear-gradient(90deg, #f97316, #f59e0b); }
+.review-photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; }
+.review-photo-grid img { width: 100%; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid #e2e8f0; }
+.review-form { display: grid; gap: 0.6rem; }
+.review-preview-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.review-preview-row img { width: 74px; height: 74px; object-fit: cover; border-radius: 10px; border: 1px solid #dbe4f5; }
+.review-list-head { display: flex; justify-content: space-between; gap: 0.7rem; align-items: center; }
+.review-list-filters { display: flex; gap: 0.4rem; }
+.review-cards { display: grid; gap: 0.7rem; margin-top: 0.8rem; }
+.review-card { border: 1px solid #dbe4f5; border-radius: 14px; padding: 0.85rem; background: #fdfefe; }
+.review-card-top { display: flex; justify-content: space-between; gap: 0.7rem; align-items: center; }
+.review-card-top small { display: block; color: var(--muted); margin-top: 0.2rem; }
+.review-images { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 0.45rem; }
+.review-images img { width: 92px; height: 92px; object-fit: cover; border-radius: 10px; border: 1px solid #dbe4f5; }
+.review-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; margin-top: 0.6rem; }
+.verified-chip {
+  border: 1px solid #86efac;
+  background: #ecfdf5;
+  color: #065f46;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.store-reply {
+  margin-top: 0.55rem;
+  border-left: 4px solid #f59e0b;
+  padding: 0.4rem 0.55rem;
+  background: #fffbeb;
+  border-radius: 8px;
+}
+.muted { color: var(--muted); }
 
 .cart-row {
   display: grid;
@@ -511,6 +569,7 @@ body {
   .navbar-top { grid-template-columns: 1fr; }
   .nav-actions { flex-wrap: wrap; }
   .product-layout { grid-template-columns: 1fr; }
+  .reviews-summary { grid-template-columns: 1fr; }
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .hero-home { grid-template-columns: 1fr; }
   .cart-row { grid-template-columns: 1fr; }
@@ -519,6 +578,9 @@ body {
 
 @media (max-width: 720px) {
   .main-image { height: 290px; }
+  .review-list-head { flex-direction: column; align-items: flex-start; }
+  .review-list-filters { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .review-photo-grid { grid-template-columns: repeat(2, 1fr); }
   .kpis { grid-template-columns: 1fr; }
   .order-actions-row { grid-template-columns: 1fr; }
   .order-flow { grid-template-columns: 1fr; gap: 0.55rem; }

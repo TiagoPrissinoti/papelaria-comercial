@@ -2,7 +2,8 @@
 const path = require('path');
 const AppError = require('../utils/AppError');
 
-const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -14,8 +15,8 @@ const storage = multer.diskStorage({
 
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
-  if (!allowedExtensions.includes(ext)) {
-    cb(new AppError('Formato invalido. Envie apenas JPG, JPEG ou PNG.', 400));
+  if (!allowedExtensions.includes(ext) || !allowedMimeTypes.includes(file.mimetype)) {
+    cb(new AppError('Formato invalido. Envie apenas JPG, JPEG, PNG ou WEBP.', 400));
     return;
   }
   cb(null, true);
@@ -35,4 +36,8 @@ const productUpload = upload.fields([
   { name: 'images', maxCount: 5 }
 ]);
 
-module.exports = { upload, productUpload };
+const reviewUpload = upload.fields([
+  { name: 'images', maxCount: 4 }
+]);
+
+module.exports = { upload, productUpload, reviewUpload };

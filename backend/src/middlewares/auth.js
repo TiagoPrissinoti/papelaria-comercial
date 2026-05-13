@@ -23,4 +23,17 @@ function isAdmin(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, isAdmin };
+function optionalAuthMiddleware(req, _res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return next();
+  const [, token] = authHeader.split(' ');
+  if (!token) return next();
+  try {
+    req.user = jwt.verify(token, jwtSecret);
+  } catch {
+    req.user = null;
+  }
+  return next();
+}
+
+module.exports = { authMiddleware, isAdmin, optionalAuthMiddleware };
