@@ -8,7 +8,13 @@ import Button from '../components/ui/Button';
 
 const initialForm = { name: '', description: '', price: '', costPrice: '', stock: '', categoryId: '', image: null, images: [] };
 const pageSize = 6;
-const statusLabel = { pendente: 'pendente', pago: 'finalizado', enviado: 'enviado', entregue: 'entregue' };
+const statusLabel = {
+  pendente: 'pendente',
+  pago: 'finalizado',
+  em_andamento: 'em andamento',
+  enviado: 'saiu para entrega',
+  entregue: 'entregue'
+};
 
 export default function AdminPage() {
   const { user, logout } = useAuth();
@@ -139,6 +145,12 @@ export default function AdminPage() {
   async function deleteUser(id) {
     await api.delete(`/admin/users/${id}`);
     notify('success', 'Usuario excluido.');
+    await loadData();
+  }
+
+  async function updateOrderStatus(orderId, status) {
+    await api.patch(`/orders/${orderId}/status`, { status });
+    notify('success', 'Status do pedido atualizado.');
     await loadData();
   }
 
@@ -355,7 +367,17 @@ export default function AdminPage() {
                 {orders.map((o) => (
                   <div key={o.id} className="cart-row">
                     <span>#{o.id} - {o.user_name}</span>
-                    <span>{statusLabel[o.status] || o.status}</span>
+                    <select
+                      className="input"
+                      value={o.status}
+                      onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                    >
+                      <option value="pendente">Pendente</option>
+                      <option value="pago">Finalizado</option>
+                      <option value="em_andamento">Em andamento</option>
+                      <option value="enviado">Saiu para entrega</option>
+                      <option value="entregue">Entregue</option>
+                    </select>
                     <span>R$ {Number(o.total).toFixed(2)}</span>
                     <span>{new Date(o.created_at).toLocaleDateString('pt-BR')}</span>
                   </div>

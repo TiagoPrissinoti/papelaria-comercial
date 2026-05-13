@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import api, { getUploadsBaseUrl } from '../services/api';
 
 const fallback = 'https://via.placeholder.com/80x80?text=Sem+Img';
-const statusLabel = { pendente: 'pendente', pago: 'finalizado', enviado: 'enviado', entregue: 'entregue' };
+const statusLabel = {
+  pendente: 'pendente',
+  pago: 'finalizado',
+  em_andamento: 'em andamento',
+  enviado: 'saiu para entrega',
+  entregue: 'entregue'
+};
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);

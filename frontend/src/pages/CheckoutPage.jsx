@@ -18,7 +18,12 @@ export default function CheckoutPage() {
       setMessage(`Pedido #${order.id} pago com sucesso.`);
       setTimeout(() => navigate('/meus-pedidos'), 800);
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Erro no checkout');
+      const status = error?.response?.status;
+      if (status && status >= 500) {
+        setMessage('Pagamento indisponivel no momento. Tente novamente em alguns instantes.');
+      } else {
+        setMessage(error.response?.data?.message || 'Erro no checkout');
+      }
     } finally {
       setLoading(false);
     }

@@ -52,7 +52,7 @@ class OrderService {
   }
 
   static async updateStatus(orderId, status) {
-    const valid = ['pendente', 'pago', 'enviado', 'entregue'];
+    const valid = ['pendente', 'pago', 'em_andamento', 'enviado', 'entregue'];
     if (!valid.includes(status)) throw new AppError('Status invalido', 400);
 
     const order = await Order.findById(orderId);

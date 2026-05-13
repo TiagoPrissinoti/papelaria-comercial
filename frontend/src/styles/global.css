@@ -575,6 +575,16 @@ body {
   background: #ecfdf5;
   color: #065f46;
 }
+.status-chip.em_andamento {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+.status-chip.enviado {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
 .status-value {
   font-size: 1.02rem;
   font-weight: 900;
