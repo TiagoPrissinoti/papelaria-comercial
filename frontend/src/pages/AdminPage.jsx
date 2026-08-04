@@ -7,6 +7,7 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
 const initialForm = { name: '', description: '', price: '', costPrice: '', stock: '', categoryId: '', image: null, images: [] };
+const imageAccept = '.jpg,.jpeg,.png,.webp,.gif,.avif,.bmp';
 const pageSize = 6;
 const statusLabel = {
   pendente: 'pendente',
@@ -440,9 +441,9 @@ export default function AdminPage() {
             {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
           </select>
           <label>Imagem principal</label>
-          <Input type="file" accept=".jpg,.jpeg,.png" onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })} />
+          <Input type="file" accept={imageAccept} onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })} />
           <label>Galeria</label>
-          <Input type="file" multiple accept=".jpg,.jpeg,.png" onChange={(e) => {
+          <Input type="file" multiple accept={imageAccept} onChange={(e) => {
             const files = Array.from(e.target.files || []);
             setForm({ ...form, images: files });
             setPreview(files.map((file) => URL.createObjectURL(file)));

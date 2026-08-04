@@ -3,8 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import ProductCard from '../components/ProductCard';
 
-function normalize(text) {
-  return (text || '').trim().toLowerCase();
+function normalizeText(text) {
+  return (text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 export default function HomePage() {
@@ -38,18 +42,20 @@ export default function HomePage() {
   }, []);
 
   const selectedCategory = searchParams.get('categoria') || '';
+  const query = searchParams.get('q') || '';
 
   const filtered = useMemo(() => {
-    const query = normalize(searchParams.get('q'));
-    const category = normalize(selectedCategory);
+    const normalizedQuery = normalizeText(query);
+    const category = normalizeText(selectedCategory);
 
     return products.filter((item) => {
-      const itemCategory = normalize(item.category_name);
-      const matchesQuery = !query || [item.name, item.description, item.category_name].join(' ').toLowerCase().includes(query);
+      const itemCategory = normalizeText(item.category_name);
+      const itemName = normalizeText(item.name);
+      const matchesQuery = !normalizedQuery || itemName.includes(normalizedQuery);
       const matchesCategory = !category || itemCategory === category;
       return matchesQuery && matchesCategory;
     });
-  }, [products, searchParams, selectedCategory]);
+  }, [products, query, selectedCategory]);
 
   const groupedProducts = useMemo(() => {
     if (!selectedCategory) return [];
@@ -74,6 +80,12 @@ export default function HomePage() {
     setIsFilterOpen(false);
   }
 
+  function clearSearch() {
+    const next = new URLSearchParams(searchParams);
+    next.delete('q');
+    setSearchParams(next);
+  }
+
   return (
     <section className="marketplace-home">
       <div className="hero hero-home">
@@ -94,6 +106,7 @@ export default function HomePage() {
           Filtrar por categorias
         </button>
         {selectedCategory && <span className="filter-pill">Categoria: {selectedCategory}</span>}
+        {query && <span className="filter-pill">Busca: {query} <button className="filter-clear" onClick={clearSearch}>Limpar</button></span>}
         {isFilterOpen && (
           <div className="filter-dropdown">
             <button className="filter-option" onClick={() => applyCategoryFilter('')}>Todas as categorias</button>
@@ -108,7 +121,9 @@ export default function HomePage() {
 
       {loading && <p>Carregando produtos...</p>}
 
-      {!loading && !filtered.length && <p>Nenhum produto encontrado para os filtros atuais.</p>}
+      {!loading && !filtered.length && (
+        <p>Nenhum produto encontrado{query ? ` para "${query}"` : ''} nos filtros atuais.</p>
+      )}
 
       {!loading && !selectedCategory && (
         <div className="products-grid">

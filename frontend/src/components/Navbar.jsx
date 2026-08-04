@@ -50,7 +50,6 @@ export default function Navbar() {
         <nav className="nav-actions">
           {token && <Link to="/carrinho" className="cart-pill">Carrinho ({count})</Link>}
           {!user && <Link to="/login">Entrar</Link>}
-          {!user && <Link to="/cadastro">Cadastrar</Link>}
           {user && <Link to="/meus-pedidos">Meus pedidos</Link>}
           {user?.role === 'admin' && <Link to="/admin">Painel admin</Link>}
           {user && <button className="ghost-btn" onClick={logout}>Sair</button>}

@@ -2,8 +2,8 @@
 const path = require('path');
 const AppError = require('../utils/AppError');
 
-const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
-const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.bmp'];
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/bmp'];
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -16,7 +16,7 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
   if (!allowedExtensions.includes(ext) || !allowedMimeTypes.includes(file.mimetype)) {
-    cb(new AppError('Formato invalido. Envie apenas JPG, JPEG, PNG ou WEBP.', 400));
+    cb(new AppError('Formato invalido. Envie JPG, JPEG, PNG, WEBP, GIF, AVIF ou BMP.', 400));
     return;
   }
   cb(null, true);

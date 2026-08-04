@@ -1,5 +1,5 @@
-﻿import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
@@ -29,6 +29,10 @@ export default function RegisterPage() {
         <Input placeholder="Email" type="email" required onChange={(e) => setForm({ ...form, email: e.target.value })} />
         <Input placeholder="Senha" type="password" required onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <Button type="submit">Cadastrar</Button>
+        <div className="auth-switch">
+          <span>Já tem uma conta?</span>
+          <Link to="/login">Entrar</Link>
+        </div>
       </form>
     </section>
   );
