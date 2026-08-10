@@ -26,7 +26,9 @@ export default function CartPage() {
     } catch (error) {
       const message = error?.response?.data?.message || 'Nao foi possivel iniciar o pagamento.';
       const guidedMessage = message.includes('MERCADO_PAGO_ACCESS_TOKEN')
-        ? `${message} Abra o arquivo backend/.env, preencha MERCADO_PAGO_ACCESS_TOKEN com o token do Mercado Pago e reinicie o backend.`
+        ? import.meta.env.PROD
+          ? `${message} Configure essa variavel secreta no servico de hospedagem e publique um novo deploy.`
+          : `${message} Abra o arquivo backend/.env, preencha MERCADO_PAGO_ACCESS_TOKEN com o token do Mercado Pago e reinicie o backend.`
         : message.includes('SDK mercadopago')
           ? `${message} Rode npm install dentro da pasta backend e reinicie o servidor.`
           : message;

@@ -15,7 +15,7 @@ let client;
 
 function getMercadoPagoClient() {
   if (!accessToken) {
-    const error = new Error('MERCADO_PAGO_ACCESS_TOKEN nao configurado. Defina a variavel em backend/.env e reinicie o servidor backend.');
+    const error = new Error('MERCADO_PAGO_ACCESS_TOKEN nao configurado no ambiente do backend.');
     error.statusCode = 500;
     throw error;
   }

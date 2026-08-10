@@ -10,7 +10,12 @@ export default function Header() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
+  const [menuOpen, setMenuOpen] = useState(false);
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/cadastro';
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (isAuthRoute) return undefined;
@@ -62,7 +67,21 @@ export default function Header() {
   return (
     <header className="header">
       <div className="container nav">
-        <Link to="/" className="logo">Papelaria Pro</Link>
+        <div className="header-brand-row">
+          <Link to="/" className="logo">Papelaria Pro</Link>
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={menuOpen}
+            aria-controls="store-navigation"
+            onClick={() => setMenuOpen((current) => !current)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
         <form className="header-search" onSubmit={handleSearch}>
           <input
             className="header-search-input"
@@ -73,7 +92,7 @@ export default function Header() {
           />
           <span className="header-search-icon" aria-hidden="true" />
         </form>
-        <nav>
+        <nav id="store-navigation" className={menuOpen ? 'mobile-open' : ''}>
           <Link to="/">Home</Link>
           {user && <Link to="/meus-pedidos">Meus Pedidos</Link>}
           {user?.role === 'admin' && <Link to="/admin">Admin</Link>}
