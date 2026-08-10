@@ -1,7 +1,9 @@
 ﻿import axios from 'axios';
 
+const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3333/api' : '/api');
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3333/api'
+  baseURL: apiUrl
 });
 
 export function setAuthToken(token) {
@@ -10,7 +12,7 @@ export function setAuthToken(token) {
 }
 
 export function getUploadsBaseUrl() {
-  return (import.meta.env.VITE_API_URL || 'http://localhost:3333/api').replace(/\/api$/, '');
+  return apiUrl.replace(/\/api$/, '');
 }
 
 export default api;

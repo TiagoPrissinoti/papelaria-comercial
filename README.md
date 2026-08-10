@@ -105,6 +105,43 @@ npm run dev
 - Backend (API): `http://localhost:3333/api`
 - Uploads: `http://localhost:3333/uploads/<arquivo>`
 
+## Mercado Pago em dev com ngrok
+O Checkout Pro do Mercado Pago exige URLs públicas `https` para `back_urls` e `notification_url`. Em desenvolvimento, use o ngrok para expor frontend e backend.
+
+### 1) Inicie os servidores locais
+```bash
+npm run dev:backend
+npm run dev:frontend
+```
+
+### 2) Abra dois túneis ngrok
+Em dois terminais separados:
+```bash
+ngrok http 3333
+ngrok http 5173
+```
+
+### 3) Copie as URLs `https`
+Exemplo:
+- Backend: `https://abc123.ngrok-free.app`
+- Frontend: `https://xyz456.ngrok-free.app`
+
+### 4) Atualize `backend/.env`
+```ini
+MERCADO_PAGO_ACCESS_TOKEN=SEU_ACCESS_TOKEN
+MERCADO_PAGO_WEBHOOK_SECRET=
+FRONTEND_URL=https://xyz456.ngrok-free.app
+BACKEND_URL=https://abc123.ngrok-free.app
+```
+
+### 5) Reinicie o backend
+Depois de alterar o `.env`, reinicie o backend para ele ler as novas URLs.
+
+### Observação importante
+- No plano gratuito do ngrok, as URLs podem mudar sempre que você reiniciar os túneis.
+- Sempre atualize `FRONTEND_URL` e `BACKEND_URL` se isso acontecer.
+- Se o Mercado Pago reclamar de URL inválida, confira se as duas URLs começam com `https://`.
+
 ## Scripts principais
 
 ### Raiz
@@ -168,3 +205,60 @@ npm run dev
 ## Observacoes
 - O backend aplica migracoes simples automaticamente na inicializacao para colunas novas em `products` e `order_items`.
 - O arquivo `backend/src/database/database.sqlite` e banco local de desenvolvimento.
+
+## Deploy economico no Railway
+
+O projeto esta configurado para publicar frontend e backend no mesmo servico. Isso reduz o custo, evita configuracao de CORS entre dominios e fornece uma unica URL HTTPS para a loja e para a API.
+
+### 1. Publique o repositorio
+
+Envie este projeto para um repositorio privado no GitHub. Nao inclua arquivos `.env`, credenciais ou o banco local.
+
+### 2. Crie o servico
+
+No Railway, escolha **New Project > Deploy from GitHub repo** e selecione o repositorio. O arquivo `railway.toml` faz o Railway construir a imagem descrita no `Dockerfile` e verificar `/api/health`.
+
+### 3. Crie o volume persistente
+
+No servico, abra **Volumes**, crie um volume e monte-o em:
+
+```text
+/data
+```
+
+Sem esse volume, o banco SQLite e as imagens podem ser perdidos em um novo deploy.
+
+### 4. Gere o dominio HTTPS
+
+Abra **Settings > Networking > Generate Domain**. Copie a URL gerada, por exemplo `https://papelaria-production.up.railway.app`.
+
+### 5. Configure as variaveis
+
+Em **Variables**, adicione:
+
+```ini
+NODE_ENV=production
+JWT_SECRET=UMA_CHAVE_LONGA_ALEATORIA
+ADMIN_EMAIL=SEU_EMAIL_DE_ADMINISTRADOR
+ADMIN_PASSWORD=UMA_SENHA_FORTE_COM_12_OU_MAIS_CARACTERES
+DATA_DIR=/data
+UPLOAD_DIR=/data/uploads
+FRONTEND_URL=https://SEU-DOMINIO.up.railway.app
+BACKEND_URL=https://SEU-DOMINIO.up.railway.app
+MERCADO_PAGO_ACCESS_TOKEN=SEU_ACCESS_TOKEN
+MERCADO_PAGO_WEBHOOK_SECRET=SEU_WEBHOOK_SECRET
+```
+
+Nao defina `PORT`: o Railway fornece essa variavel automaticamente. `ADMIN_PASSWORD` substitui a senha publica do seed na primeira inicializacao do banco de producao. O Access Token e o segredo do webhook sao privados e nunca devem usar o prefixo `VITE_`.
+
+### 6. Configure o Mercado Pago
+
+Em **Suas integracoes**, abra a aplicacao e configure, primeiro na aba de testes:
+
+```text
+https://SEU-DOMINIO.up.railway.app/api/webhook
+```
+
+Selecione o evento **Pagamentos** e copie a assinatura secreta gerada para `MERCADO_PAGO_WEBHOOK_SECRET`. Valide uma compra completa com credenciais de teste antes de ativar as credenciais de producao.
+
+Para entrar em producao, ative as credenciais de producao no painel do Mercado Pago e substitua somente `MERCADO_PAGO_ACCESS_TOKEN` no Railway pelo Access Token de producao. Configure a mesma URL na aba de webhooks de producao e confirme se o segredo de producao e diferente; se for, atualize tambem `MERCADO_PAGO_WEBHOOK_SECRET`.

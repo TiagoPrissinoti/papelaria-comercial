@@ -61,6 +61,21 @@ CREATE TABLE IF NOT EXISTS order_items (
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS pedidos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cliente_id INTEGER NOT NULL,
+  valor_total REAL NOT NULL CHECK(valor_total >= 0),
+  status TEXT NOT NULL CHECK(status IN ('approved', 'pending', 'rejected', 'cancelled', 'refunded')) DEFAULT 'pending',
+  payment_id TEXT,
+  preference_id TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pedidos_preference_id ON pedidos(preference_id);
+CREATE INDEX IF NOT EXISTS idx_pedidos_payment_id ON pedidos(payment_id);
+
 CREATE TABLE IF NOT EXISTS reviews (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,

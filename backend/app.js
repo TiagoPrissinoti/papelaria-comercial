@@ -2,24 +2,51 @@
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const routes = require('./src/routes');
 const errorHandler = require('./src/middlewares/errorHandler');
 const { getDb } = require('./src/database/connection');
+const { uploadDir } = require('./src/config/env');
 
 const app = express();
+const frontendDist = path.resolve(__dirname, '..', 'frontend', 'dist');
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.resolve(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadDir));
 app.use('/api', routes);
+
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) return next();
+    return res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
 app.use(errorHandler);
 
-(async () => {
+async function initializeApp() {
+  fs.mkdirSync(uploadDir, { recursive: true });
   const db = await getDb();
   const schema = fs.readFileSync(path.resolve(__dirname, 'src/database/schema.sql'), 'utf8');
   await db.exec(schema);
+
+  if (process.env.NODE_ENV === 'production') {
+    const defaultAdminHash = '$2a$10$GR2lv3BXoXB0tGUzxoTGRuG7doCNxZFolA5Vc0VTpFN6I1XkNIr/e';
+    const admin = await db.get('SELECT id, password FROM users WHERE id = 1');
+    if (admin?.password === defaultAdminHash) {
+      const adminPassword = String(process.env.ADMIN_PASSWORD || '');
+      if (adminPassword.length < 12) {
+        throw new Error('Defina ADMIN_PASSWORD com pelo menos 12 caracteres antes de iniciar em producao.');
+      }
+      const adminEmail = String(process.env.ADMIN_EMAIL || 'admin@papelaria.com').trim().toLowerCase();
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
+      await db.run('UPDATE users SET email = ?, password = ? WHERE id = 1', [adminEmail, passwordHash]);
+    }
+  }
 
   const columns = await db.all("PRAGMA table_info(products)");
   const hasImages = columns.some((column) => column.name === 'images');
@@ -94,6 +121,7 @@ app.use(errorHandler);
     `);
     await db.exec('PRAGMA foreign_keys = ON');
   }
-})();
+}
 
 module.exports = app;
+module.exports.initializeApp = initializeApp;

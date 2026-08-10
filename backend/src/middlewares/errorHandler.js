@@ -6,7 +6,7 @@
     return res.status(400).json({ message });
   }
 
-  const status = err.statusCode || 500;
+  const status = err.statusCode || err.status || 500;
   const message = err.message || 'Erro interno do servidor';
 
   if (process.env.NODE_ENV !== 'test') {

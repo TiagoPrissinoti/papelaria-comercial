@@ -6,6 +6,10 @@ dist/
 build/
 coverage/
 
+# Bancos locais podem conter contas, pedidos e outros dados pessoais.
+backend/src/database/*.sqlite
+backend/src/database/*.sqlite-*
+
 .env
 .env.*
 !.env.example

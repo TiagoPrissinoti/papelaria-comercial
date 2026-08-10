@@ -1,40 +1,33 @@
-﻿import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import { useCart } from '../hooks/useCart';
+import { Link, useSearchParams } from 'react-router-dom';
+
+function getStatusMessage(status) {
+  if (status === 'approved') return 'Pagamento aprovado';
+  if (status === 'pending') return 'Pagamento em análise';
+  if (status === 'rejected' || status === 'cancelled' || status === 'refunded') return 'Pagamento recusado';
+  return '';
+}
 
 export default function CheckoutPage() {
-  const { refreshCart } = useCart();
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const navigate = useNavigate();
-
-  async function handleCheckout() {
-    try {
-      setLoading(true);
-      const { data: order } = await api.post('/orders/checkout');
-      await api.post(`/orders/${order.id}/pay`);
-      await refreshCart();
-      setMessage(`Pedido #${order.id} pago com sucesso.`);
-      setTimeout(() => navigate('/meus-pedidos'), 800);
-    } catch (error) {
-      const status = error?.response?.status;
-      if (status && status >= 500) {
-        setMessage('Pagamento indisponivel no momento. Tente novamente em alguns instantes.');
-      } else {
-        setMessage(error.response?.data?.message || 'Erro no checkout');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [searchParams] = useSearchParams();
+  const status = searchParams.get('payment_status');
+  const pedidoId = searchParams.get('pedido_id');
+  const message = getStatusMessage(status);
 
   return (
-    <section>
-      <h1>Checkout</h1>
-      <p>Resumo pronto para pagamento simulado.</p>
-      <button className="btn btn-primary" onClick={handleCheckout} disabled={loading}>{loading ? 'Processando...' : 'Pagar agora'}</button>
-      {message && <p className="toast">{message}</p>}
+    <section className="checkout-shell">
+      <article className="empty-checkout">
+        <p className="hero-kicker">{message ? 'Retorno do pagamento' : 'Checkout Pro'}</p>
+        <h1>{message || 'Pagamento em andamento'}</h1>
+        <p>
+          {message
+            ? `${pedidoId ? `Pedido #${pedidoId}. ` : ''}O status final é confirmado pelo webhook do Mercado Pago em segundo plano.`
+            : 'Você será redirecionado de volta para esta tela após a confirmação do pagamento.'}
+        </p>
+        <div className="checkout-result-actions">
+          <Link className="btn btn-primary" to="/meus-pedidos">Ver meus pedidos</Link>
+          <Link className="btn btn-secondary" to="/">Voltar para a loja</Link>
+        </div>
+      </article>
     </section>
   );
 }
