@@ -6,8 +6,8 @@ try {
   MercadoPagoConfig = null;
 }
 
-const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || '';
-const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET || '';
+const accessToken = String(process.env.MERCADO_PAGO_ACCESS_TOKEN || '').trim();
+const webhookSecret = String(process.env.MERCADO_PAGO_WEBHOOK_SECRET || '').trim();
 const environment = String(process.env.MERCADO_PAGO_ENVIRONMENT || 'test').trim().toLowerCase();
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const backendUrl = process.env.BACKEND_URL || 'http://localhost:3333';

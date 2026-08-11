@@ -39,7 +39,8 @@ exports.webhook = asyncHandler(async (req, res) => {
   const notificationType = String(req.body?.type || req.query.type || req.query.topic || 'payment').toLowerCase();
   if (notificationType !== 'payment') return res.status(200).json({ ignored: true });
 
-  const notificationDataId = String(req.body?.data?.id || req.query['data.id'] || '').trim();
+  const queryDataId = req.query['data.id'];
+  const notificationDataId = String(queryDataId || req.body?.data?.id || '').trim();
   if (!notificationDataId) throw badRequest('ID do pagamento ausente na notificacao.');
 
   if (!webhookSecret || !webhookTools?.WebhookSignatureValidator) {
@@ -50,10 +51,19 @@ exports.webhook = asyncHandler(async (req, res) => {
     webhookTools.WebhookSignatureValidator.validate({
       xSignature: req.headers['x-signature'],
       xRequestId: req.headers['x-request-id'],
-      dataId: notificationDataId,
+      // A assinatura usa apenas data.id da query string. O ID do body serve
+      // para consultar o pagamento, mas nao deve ser incluido no HMAC quando
+      // o Mercado Pago nao o enviou tambem na URL.
+      dataId: queryDataId,
       secret: webhookSecret
     });
-  } catch {
+  } catch (error) {
+    console.warn('Webhook do Mercado Pago rejeitado:', {
+      reason: error?.reason || error?.name || 'assinatura_invalida',
+      requestId: req.headers['x-request-id'],
+      hasSignature: Boolean(req.headers['x-signature']),
+      hasQueryDataId: Boolean(queryDataId)
+    });
     return res.status(401).end();
   }
 

@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const crypto = require('node:crypto');
+const { WebhookSignatureValidator } = require('mercadopago');
 
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'papelaria-payment-'));
 process.env.NODE_ENV = 'test';
@@ -30,6 +32,21 @@ test('normaliza valores monetarios e status do Mercado Pago', () => {
   assert.equal(toCents('29.90'), 2990);
   assert.equal(normalizePaymentStatus('in_process'), 'pending');
   assert.equal(normalizePaymentStatus('charged_back'), 'refunded');
+});
+
+test('assinatura sem data.id na URL omite o ID do corpo no HMAC', () => {
+  const secret = 'segredo-de-teste';
+  const requestId = 'request-123';
+  const timestamp = '1742505638683';
+  const manifest = `request-id:${requestId};ts:${timestamp};`;
+  const hash = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+
+  assert.doesNotThrow(() => WebhookSignatureValidator.validate({
+    xSignature: `ts=${timestamp},v1=${hash}`,
+    xRequestId: requestId,
+    dataId: undefined,
+    secret
+  }));
 });
 
 test('cadastro publico nunca permite criar administrador', async () => {
