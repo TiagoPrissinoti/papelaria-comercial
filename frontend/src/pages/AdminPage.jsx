@@ -380,14 +380,16 @@ export default function AdminPage() {
                     <span>
                       Pedido #{o.id} (GFL-{o.id})<br />
                       <small>{o.user_name} - {new Date(o.created_at).toLocaleString('pt-BR')}</small>
+                      {o.fulfillment_error && <><br /><small className="error-message">{o.fulfillment_error}</small></>}
                     </span>
                     <select
                       className="input"
                       value={o.status}
+                      disabled={o.payment_status !== 'approved'}
                       onChange={(e) => updateOrderStatus(o.id, e.target.value)}
                     >
-                      <option value="pendente">Pendente</option>
-                      <option value="pago">Finalizado</option>
+                      {o.status === 'pendente' && <option value="pendente">Aguardando pagamento</option>}
+                      {o.status === 'pago' && <option value="pago">Pagamento aprovado</option>}
                       <option value="em_andamento">Em andamento</option>
                       <option value="enviado">Saiu para entrega</option>
                       <option value="entregue">Entregue</option>

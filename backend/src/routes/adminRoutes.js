@@ -54,7 +54,9 @@ router.get('/reports/summary', asyncHandler(async (req, res) => {
       COALESCE(SUM(quantity * unit_price), 0) AS gross_revenue,
       COALESCE(SUM(quantity * cost_price), 0) AS total_cost,
       COALESCE(SUM(quantity * (unit_price - cost_price)), 0) AS total_profit
-     FROM order_items`
+     FROM order_items oi
+     INNER JOIN orders o ON o.id = oi.order_id
+     WHERE o.payment_status = 'approved'`
   );
 
   const totalRevenue = Number(financial?.gross_revenue || 0);
@@ -103,10 +105,12 @@ router.get('/reports/export.csv', asyncHandler(async (req, res) => {
     `SELECT o.id, COALESCE(SUM(oi.quantity * (oi.unit_price - oi.cost_price)), 0) AS profit
      FROM orders o
      LEFT JOIN order_items oi ON oi.order_id = o.id
+     WHERE o.payment_status = 'approved'
      GROUP BY o.id`
   );
   const profitByOrderId = new Map(rows.map((row) => [row.id, Number(row.profit || 0)]));
   const filtered = orders.filter((order) => {
+    if (order.payment_status !== 'approved') return false;
     const createdAt = new Date(order.created_at);
     if (from && createdAt < from) return false;
     if (to && createdAt > to) return false;

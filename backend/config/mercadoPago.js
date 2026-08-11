@@ -8,6 +8,7 @@ try {
 
 const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || '';
 const webhookSecret = process.env.MERCADO_PAGO_WEBHOOK_SECRET || '';
+const environment = String(process.env.MERCADO_PAGO_ENVIRONMENT || 'test').trim().toLowerCase();
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 const backendUrl = process.env.BACKEND_URL || 'http://localhost:3333';
 
@@ -40,10 +41,25 @@ function getBackendUrl() {
   return backendUrl.replace(/\/$/, '');
 }
 
+function validateMercadoPagoConfig() {
+  if (!['test', 'production'].includes(environment)) {
+    throw new Error('MERCADO_PAGO_ENVIRONMENT deve ser test ou production.');
+  }
+
+  if (process.env.NODE_ENV !== 'production') return;
+
+  if (!accessToken) throw new Error('Defina MERCADO_PAGO_ACCESS_TOKEN em producao.');
+  if (!webhookSecret) throw new Error('Defina MERCADO_PAGO_WEBHOOK_SECRET em producao.');
+  if (!/^https:\/\//i.test(getFrontendUrl())) throw new Error('FRONTEND_URL deve usar HTTPS em producao.');
+  if (!/^https:\/\//i.test(getBackendUrl())) throw new Error('BACKEND_URL deve usar HTTPS em producao.');
+}
+
 module.exports = {
   accessToken,
   webhookSecret,
+  environment,
   getMercadoPagoClient,
   getFrontendUrl,
-  getBackendUrl
+  getBackendUrl,
+  validateMercadoPagoConfig
 };

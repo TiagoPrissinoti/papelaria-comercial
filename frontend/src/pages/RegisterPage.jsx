@@ -13,7 +13,7 @@ export default function RegisterPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      await register({ ...form, role: 'client' });
+      await register(form);
       navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'Erro no cadastro');
@@ -27,7 +27,7 @@ export default function RegisterPage() {
         {error && <p className="error">{error}</p>}
         <Input placeholder="Nome" required onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <Input placeholder="Email" type="email" required onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <Input placeholder="Senha" type="password" required onChange={(e) => setForm({ ...form, password: e.target.value })} />
+        <Input placeholder="Senha (minimo de 8 caracteres)" type="password" minLength="8" required onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <Button type="submit">Cadastrar</Button>
         <div className="auth-switch">
           <span>Já tem uma conta?</span>

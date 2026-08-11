@@ -5,9 +5,15 @@ try {
 } catch {
   Preference = null;
 }
-const Pedido = require('../src/models/Pedido');
-const Product = require('../src/models/Product');
-const { accessToken, getMercadoPagoClient, getFrontendUrl, getBackendUrl } = require('../config/mercadoPago');
+
+const Order = require('../src/models/Order');
+const {
+  accessToken,
+  environment,
+  getMercadoPagoClient,
+  getFrontendUrl,
+  getBackendUrl
+} = require('../config/mercadoPago');
 
 const allowedStatuses = new Set(['approved', 'pending', 'rejected', 'cancelled', 'refunded']);
 
@@ -17,37 +23,10 @@ function formatError(message, status = 400) {
   return error;
 }
 
-function normalizeQuantity(value) {
-  const quantity = Number.parseInt(value, 10);
-  return Number.isFinite(quantity) && quantity > 0 ? quantity : null;
-}
-
-function normalizeProducts(produtos) {
-  if (!Array.isArray(produtos) || !produtos.length) {
-    throw formatError('Envie ao menos um produto.', 400);
-  }
-
-  return produtos.map((produto, index) => {
-    const id = Number.parseInt(produto?.id, 10);
-    const titulo = String(produto?.titulo || '').trim();
-    const quantidade = normalizeQuantity(produto?.quantidade);
-    const preco = Number(produto?.preco);
-
-    if (!Number.isFinite(id) || id <= 0) {
-      throw formatError(`Produto inválido na posição ${index + 1}.`, 400);
-    }
-    if (!titulo) {
-      throw formatError(`Título inválido para o produto ${id}.`, 400);
-    }
-    if (!quantidade) {
-      throw formatError(`Quantidade inválida para o produto ${id}.`, 400);
-    }
-    if (!Number.isFinite(preco) || preco < 0) {
-      throw formatError(`Preço inválido para o produto ${id}.`, 400);
-    }
-
-    return { id, titulo, quantidade, preco };
-  });
+function toCents(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.round((number + Number.EPSILON) * 100);
 }
 
 function normalizePaymentStatus(status) {
@@ -59,17 +38,19 @@ function normalizePaymentStatus(status) {
   return 'rejected';
 }
 
-function buildReturnUrls(pedidoId, requestOrigin) {
-  const frontendBase = process.env.NODE_ENV !== 'production' && requestOrigin
-    ? requestOrigin.replace(/\/$/, '')
-    : getFrontendUrl();
-  if (!/^https:\/\//i.test(frontendBase)) {
-    throw formatError(
-      'Mercado Pago exige FRONTEND_URL com HTTPS publico para back_urls. Configure um dominio seguro (ou tunel HTTPS como ngrok) no backend/.env e tente novamente.',
-      400
-    );
+function requireHttpsUrl(value, variableName) {
+  const normalized = String(value || '').replace(/\/$/, '');
+  if (!/^https:\/\//i.test(normalized)) {
+    throw formatError(`${variableName} deve conter uma URL HTTPS publica.`, 500);
   }
-  const query = `pedido_id=${pedidoId}`;
+  return normalized;
+}
+
+function buildReturnUrls(orderId, requestOrigin) {
+  const frontendBase = process.env.NODE_ENV !== 'production' && requestOrigin
+    ? requireHttpsUrl(requestOrigin, 'Origin do frontend')
+    : requireHttpsUrl(getFrontendUrl(), 'FRONTEND_URL');
+  const query = `pedido_id=${orderId}`;
   return {
     success: `${frontendBase}/checkout?payment_status=approved&${query}`,
     pending: `${frontendBase}/checkout?payment_status=pending&${query}`,
@@ -77,129 +58,124 @@ function buildReturnUrls(pedidoId, requestOrigin) {
   };
 }
 
-async function buildPreferenceItems(produtos) {
-  const sanitized = [];
-
-  for (const produto of produtos) {
-    const product = await Product.findById(produto.id, { includeInactive: true });
-    if (!product || !product.is_active) {
-      throw formatError(`Produto ${produto.id} não encontrado.`, 404);
-    }
-    if (produto.quantidade > Number(product.stock || 0)) {
-      throw formatError(`Estoque insuficiente para ${product.name}.`, 400);
-    }
-
-    sanitized.push({
-      id: String(product.id),
-      title: product.name,
-      description: product.description || produto.titulo,
-      quantity: produto.quantidade,
-      currency_id: 'BRL',
-      unit_price: Number(product.price)
-    });
-  }
-
-  return sanitized;
+function buildPreferenceItems(items) {
+  return items.map((item) => ({
+    id: String(item.product_id),
+    title: item.name,
+    description: item.description || item.name,
+    quantity: item.quantity,
+    currency_id: 'BRL',
+    unit_price: Number(item.price)
+  }));
 }
 
-async function criarPreferencia({ clienteId, produtos, requestOrigin }) {
-  if (!Preference) {
-    throw formatError('A SDK mercadopago nao esta instalada no backend.', 500);
-  }
+async function criarPreferencia({ clienteId, payerEmail, requestOrigin }) {
+  if (!Preference) throw formatError('A SDK mercadopago nao esta instalada no backend.', 500);
 
-  const normalizedProducts = normalizeProducts(produtos);
-  const items = await buildPreferenceItems(normalizedProducts);
-  const total = items.reduce((acc, item) => acc + item.quantity * item.unit_price, 0);
-  const backendBase = getBackendUrl();
-
-  const pedido = await Pedido.create({
-    clienteId,
-    valorTotal: total,
-    status: 'pending'
-  });
-
+  const { order, items: cartItems } = await Order.createPendingFromCart(clienteId);
+  const backendBase = requireHttpsUrl(getBackendUrl(), 'BACKEND_URL');
   const preferenceClient = new Preference(getMercadoPagoClient());
   const preferencePayload = {
-    items,
-    external_reference: String(pedido.id),
+    items: buildPreferenceItems(cartItems),
+    external_reference: String(order.id),
     auto_return: 'approved',
-    back_urls: buildReturnUrls(pedido.id, requestOrigin),
+    back_urls: buildReturnUrls(order.id, requestOrigin),
     notification_url: `${backendBase}/api/webhook`,
     metadata: {
-      pedido_id: pedido.id,
-      cliente_id: clienteId
+      order_id: order.id,
+      user_id: clienteId,
+      checkout_nonce: order.checkout_nonce
     }
   };
 
-  const response = await preferenceClient.create({ body: preferencePayload });
-  const preference = response?.response ?? response?.body ?? response;
-  const preferenceId = preference?.id || preference?.body?.id;
+  if (payerEmail) preferencePayload.payer = { email: payerEmail };
 
-  if (!preferenceId) {
-    throw formatError('Nao foi possivel criar a preferencia de pagamento.', 502);
+  try {
+    const response = await preferenceClient.create({
+      body: preferencePayload,
+      requestOptions: { idempotencyKey: `papelaria-order-${order.id}` }
+    });
+    const preference = response?.response ?? response?.body ?? response;
+    const preferenceId = preference?.id || preference?.body?.id;
+
+    if (!preferenceId || !preference?.init_point) {
+      throw formatError('Nao foi possivel criar a preferencia de pagamento.', 502);
+    }
+
+    const updatedOrder = await Order.setPreference(order.id, preferenceId);
+    return {
+      order: updatedOrder,
+      preference: {
+        id: preferenceId,
+        init_point: preference.init_point
+      }
+    };
+  } catch (error) {
+    await Order.markPreferenceFailure(order.id, error.message);
+    throw error;
   }
-
-  const pedidoAtualizado = await Pedido.updateById(pedido.id, {
-    preferenceId,
-    status: pedido.status
-  });
-
-  return {
-    pedido: pedidoAtualizado || pedido,
-    preference: {
-      id: preferenceId,
-      init_point: preference.init_point || preference?.body?.init_point,
-      sandbox_init_point: preference.sandbox_init_point || preference?.body?.sandbox_init_point
-    }
-  };
 }
 
 async function consultarPagamento(paymentId) {
-  if (!paymentId) {
-    throw formatError('ID do pagamento ausente.', 400);
-  }
-  if (!accessToken) {
-    throw formatError('MERCADO_PAGO_ACCESS_TOKEN nao configurado.', 500);
-  }
+  if (!paymentId) throw formatError('ID do pagamento ausente.', 400);
+  if (!accessToken) throw formatError('MERCADO_PAGO_ACCESS_TOKEN nao configurado.', 500);
 
-  const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
+  const response = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
   });
 
   if (!response.ok) {
-    throw formatError('Falha ao consultar o pagamento no Mercado Pago.', 502);
+    throw formatError(`Falha ao consultar o pagamento no Mercado Pago (${response.status}).`, 502);
   }
 
   return response.json();
 }
 
 async function atualizarPedidoComPagamento({ payment }) {
+  const paymentId = payment?.id ? String(payment.id) : '';
+  const externalReference = payment?.external_reference ? String(payment.external_reference) : '';
+  const preferenceId = payment?.preference_id ? String(payment.preference_id) : '';
+  const checkoutNonce = String(payment?.metadata?.checkout_nonce || '');
+  const currency = String(payment?.currency_id || '').toUpperCase();
+  const amount = Number(payment?.transaction_amount);
+  const liveMode = payment?.live_mode;
   const paymentStatus = normalizePaymentStatus(payment?.status);
-  const paymentId = payment?.id ? String(payment.id) : null;
-  const preferenceId = payment?.preference_id ? String(payment.preference_id) : null;
-  const externalReference = payment?.external_reference ? String(payment.external_reference) : null;
 
-  let pedido = null;
-  if (externalReference && /^\d+$/.test(externalReference)) {
-    pedido = await Pedido.findById(Number(externalReference));
-  }
-  if (!pedido && preferenceId) {
-    pedido = await Pedido.findByPreferenceId(preferenceId);
-  }
-  if (!pedido && paymentId) {
-    pedido = await Pedido.findByPaymentId(paymentId);
+  if (!paymentId || !/^\d+$/.test(externalReference)) {
+    throw formatError('Pagamento sem identificacao valida do pedido.', 422);
   }
 
-  if (!pedido) {
-    throw formatError('Pedido correspondente nao encontrado.', 404);
+  const order = await Order.findById(Number(externalReference));
+  if (!order) throw formatError('Pedido correspondente nao encontrado.', 404);
+  if (!order.checkout_nonce || checkoutNonce !== order.checkout_nonce) {
+    throw formatError('Identificador seguro do checkout nao corresponde ao pedido.', 422);
+  }
+  if (preferenceId && order.preference_id !== preferenceId) {
+    throw formatError('A preferencia do pagamento nao corresponde ao pedido.', 422);
   }
 
-  return Pedido.updateById(pedido.id, {
-    paymentId: paymentId || pedido.payment_id,
-    preferenceId: preferenceId || pedido.preference_id,
-    status: paymentStatus
+  const paymentOwner = await Order.findByPaymentId(paymentId);
+  if (paymentOwner && paymentOwner.id !== order.id) {
+    throw formatError('Pagamento ja associado a outro pedido.', 409);
+  }
+
+  if (currency !== 'BRL') throw formatError('Moeda do pagamento invalida.', 422);
+  if (toCents(amount) !== toCents(order.total)) {
+    throw formatError('Valor do pagamento nao corresponde ao total do pedido.', 422);
+  }
+  if (typeof liveMode !== 'boolean') throw formatError('Ambiente do pagamento nao informado.', 422);
+
+  const expectedLiveMode = environment === 'production';
+  if (liveMode !== expectedLiveMode) {
+    throw formatError('Ambiente do pagamento nao corresponde ao ambiente configurado.', 422);
+  }
+
+  return Order.applyPayment(order.id, {
+    id: paymentId,
+    status: paymentStatus,
+    amount,
+    currency,
+    liveMode
   });
 }
 
@@ -207,5 +183,6 @@ module.exports = {
   criarPreferencia,
   consultarPagamento,
   atualizarPedidoComPagamento,
-  normalizePaymentStatus
+  normalizePaymentStatus,
+  toCents
 };

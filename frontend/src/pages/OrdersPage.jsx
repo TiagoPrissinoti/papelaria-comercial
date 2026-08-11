@@ -10,6 +10,13 @@ const statusLabel = {
   enviado: 'saiu para entrega',
   entregue: 'entregue'
 };
+const paymentStatusLabel = {
+  pending: 'aguardando pagamento',
+  approved: 'pagamento aprovado',
+  rejected: 'pagamento recusado',
+  cancelled: 'pagamento cancelado',
+  refunded: 'pagamento reembolsado'
+};
 const flowSteps = [
   { key: 'pendente', title: 'Pedido recebido' },
   { key: 'pago', title: 'Pagamento aprovado' },
@@ -53,6 +60,8 @@ export default function OrdersPage() {
             <h3>Pedido #{order.id}</h3>
           </div>
           <p>Total: R$ {Number(order.total).toFixed(2)} | Rastreio: GFL-{order.id}</p>
+          <p><strong>Pagamento:</strong> {paymentStatusLabel[order.payment_status] || order.payment_status}</p>
+          {order.fulfillment_error && <p className="error-message">{order.fulfillment_error}</p>}
 
           <div className="order-actions-row">
             <button type="button" className="btn btn-secondary" onClick={() => setTrackingOrder(order)}>

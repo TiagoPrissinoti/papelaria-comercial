@@ -3,6 +3,7 @@ const { open } = require('sqlite');
 const { dbPath, dbClient } = require('../config/env');
 
 let connection;
+let transactionTail = Promise.resolve();
 
 async function getDb() {
   if (dbClient !== 'sqlite') {
@@ -21,4 +22,28 @@ async function getDb() {
   return connection;
 }
 
-module.exports = { getDb };
+async function withTransaction(work) {
+  const previous = transactionTail;
+  let release;
+  transactionTail = new Promise((resolve) => { release = resolve; });
+  await previous;
+
+  let db;
+  let began = false;
+  try {
+    db = await getDb();
+    await db.exec('BEGIN IMMEDIATE');
+    began = true;
+    const result = await work(db);
+    await db.exec('COMMIT');
+    began = false;
+    return result;
+  } catch (error) {
+    if (began) await db.exec('ROLLBACK');
+    throw error;
+  } finally {
+    release();
+  }
+}
+
+module.exports = { getDb, withTransaction };

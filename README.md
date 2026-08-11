@@ -129,7 +129,8 @@ Exemplo:
 ### 4) Atualize `backend/.env`
 ```ini
 MERCADO_PAGO_ACCESS_TOKEN=SEU_ACCESS_TOKEN
-MERCADO_PAGO_WEBHOOK_SECRET=
+MERCADO_PAGO_WEBHOOK_SECRET=SEU_SEGREDO_DE_TESTE
+MERCADO_PAGO_ENVIRONMENT=test
 FRONTEND_URL=https://xyz456.ngrok-free.app
 BACKEND_URL=https://abc123.ngrok-free.app
 ```
@@ -190,11 +191,13 @@ Depois de alterar o `.env`, reinicie o backend para ele ler as novas URLs.
   - `POST /api/cart/items`
   - `DELETE /api/cart/items/:productId`
 - Pedidos:
-  - `POST /api/orders/checkout`
   - `GET /api/orders/my`
-  - `POST /api/orders/:id/pay`
   - `GET /api/orders` (admin)
   - `PATCH /api/orders/:id/status` (admin)
+- Pagamento:
+  - `POST /api/pagamento/criar`
+  - `GET /api/pagamento/pedidos/:id`
+  - `POST /api/webhook` (Mercado Pago, com assinatura obrigatoria)
 - Admin:
   - `GET /api/admin/users`
   - `PUT /api/admin/users/:id`
@@ -213,6 +216,14 @@ O projeto esta configurado para publicar frontend e backend no mesmo servico. Is
 ### 1. Publique o repositorio
 
 Envie este projeto para um repositorio privado no GitHub. Nao inclua arquivos `.env`, credenciais ou o banco local.
+
+Se o banco local ou uploads ja tiverem sido versionados anteriormente, remova-os apenas do indice do Git, preservando os arquivos locais:
+
+```bash
+git rm -r --cached backend/src/database/*.sqlite backend/uploads
+```
+
+Revise tambem o historico do repositorio antes de torna-lo publico.
 
 ### 2. Crie o servico
 
@@ -247,6 +258,7 @@ FRONTEND_URL=https://SEU-DOMINIO.up.railway.app
 BACKEND_URL=https://SEU-DOMINIO.up.railway.app
 MERCADO_PAGO_ACCESS_TOKEN=SEU_ACCESS_TOKEN
 MERCADO_PAGO_WEBHOOK_SECRET=SEU_WEBHOOK_SECRET
+MERCADO_PAGO_ENVIRONMENT=test
 ```
 
 Nao defina `PORT`: o Railway fornece essa variavel automaticamente. `ADMIN_PASSWORD` substitui a senha publica do seed na primeira inicializacao do banco de producao. O Access Token e o segredo do webhook sao privados e nunca devem usar o prefixo `VITE_`.
@@ -261,4 +273,12 @@ https://SEU-DOMINIO.up.railway.app/api/webhook
 
 Selecione o evento **Pagamentos** e copie a assinatura secreta gerada para `MERCADO_PAGO_WEBHOOK_SECRET`. Valide uma compra completa com credenciais de teste antes de ativar as credenciais de producao.
 
-Para entrar em producao, ative as credenciais de producao no painel do Mercado Pago e substitua somente `MERCADO_PAGO_ACCESS_TOKEN` no Railway pelo Access Token de producao. Configure a mesma URL na aba de webhooks de producao e confirme se o segredo de producao e diferente; se for, atualize tambem `MERCADO_PAGO_WEBHOOK_SECRET`.
+Para entrar em producao, ative as credenciais de producao no painel do Mercado Pago e faca a troca em uma unica publicacao no Railway:
+
+```ini
+MERCADO_PAGO_ACCESS_TOKEN=SEU_ACCESS_TOKEN_DE_PRODUCAO
+MERCADO_PAGO_WEBHOOK_SECRET=SEU_SEGREDO_DE_WEBHOOK_PRODUTIVO
+MERCADO_PAGO_ENVIRONMENT=production
+```
+
+Configure a URL na aba **Modo produtivo** dos webhooks e mantenha o evento **Pagamentos** selecionado. Nao reutilize preferencias criadas com credenciais de teste depois da troca. O backend valida assinatura, valor, moeda, preferencia e `live_mode` antes de aprovar o pedido, e o estoque e baixado de forma idempotente na primeira aprovacao.

@@ -8,12 +8,22 @@ require('dotenv').config();
 const routes = require('./src/routes');
 const errorHandler = require('./src/middlewares/errorHandler');
 const { getDb } = require('./src/database/connection');
-const { uploadDir } = require('./src/config/env');
+const { uploadDir, validateRuntimeConfig } = require('./src/config/env');
+const { getFrontendUrl, validateMercadoPagoConfig } = require('./config/mercadoPago');
 
 const app = express();
 const frontendDist = path.resolve(__dirname, '..', 'frontend', 'dist');
 
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || process.env.NODE_ENV !== 'production' || origin === getFrontendUrl()) {
+      return callback(null, true);
+    }
+    const error = new Error('Origem nao permitida');
+    error.status = 403;
+    return callback(error);
+  }
+}));
 app.use(express.json());
 app.use('/uploads', express.static(uploadDir));
 app.use('/api', routes);
@@ -29,6 +39,8 @@ if (fs.existsSync(frontendDist)) {
 app.use(errorHandler);
 
 async function initializeApp() {
+  validateRuntimeConfig();
+  validateMercadoPagoConfig();
   fs.mkdirSync(uploadDir, { recursive: true });
   const db = await getDb();
   const schema = fs.readFileSync(path.resolve(__dirname, 'src/database/schema.sql'), 'utf8');
@@ -71,7 +83,6 @@ async function initializeApp() {
   const orderTable = await db.get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'orders'");
   const orderSql = String(orderTable?.sql || '');
   const hasEmAndamentoStatus = orderSql.includes("'em_andamento'");
-  const hasHiddenByUser = orderSql.includes('hidden_by_user');
   if (!hasEmAndamentoStatus) {
     await db.exec('PRAGMA foreign_keys = OFF');
     await db.exec(`
@@ -92,9 +103,38 @@ async function initializeApp() {
     `);
     await db.exec('PRAGMA foreign_keys = ON');
   }
-  if (!hasHiddenByUser) {
+  const postRebuildOrderColumns = await db.all("PRAGMA table_info(orders)");
+  if (!postRebuildOrderColumns.some((column) => column.name === 'hidden_by_user')) {
     await db.exec('ALTER TABLE orders ADD COLUMN hidden_by_user INTEGER NOT NULL DEFAULT 0 CHECK(hidden_by_user IN (0, 1))');
   }
+
+  const refreshedOrderColumns = await db.all("PRAGMA table_info(orders)");
+  const orderColumnNames = new Set(refreshedOrderColumns.map((column) => column.name));
+  const orderMigrations = [
+    ['payment_status', "ALTER TABLE orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'pending'"],
+    ['payment_id', 'ALTER TABLE orders ADD COLUMN payment_id TEXT'],
+    ['preference_id', 'ALTER TABLE orders ADD COLUMN preference_id TEXT'],
+    ['checkout_nonce', 'ALTER TABLE orders ADD COLUMN checkout_nonce TEXT'],
+    ['payment_amount', 'ALTER TABLE orders ADD COLUMN payment_amount REAL'],
+    ['payment_currency', 'ALTER TABLE orders ADD COLUMN payment_currency TEXT'],
+    ['payment_live_mode', 'ALTER TABLE orders ADD COLUMN payment_live_mode INTEGER'],
+    ['stock_deducted', 'ALTER TABLE orders ADD COLUMN stock_deducted INTEGER NOT NULL DEFAULT 0'],
+    ['fulfillment_error', 'ALTER TABLE orders ADD COLUMN fulfillment_error TEXT'],
+    ['paid_at', 'ALTER TABLE orders ADD COLUMN paid_at DATETIME'],
+    ['updated_at', 'ALTER TABLE orders ADD COLUMN updated_at DATETIME']
+  ];
+  for (const [column, sql] of orderMigrations) {
+    if (!orderColumnNames.has(column)) await db.exec(sql);
+  }
+  await db.exec('UPDATE orders SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)');
+  await db.exec(`
+    UPDATE orders
+    SET payment_status = 'approved', stock_deducted = 1, paid_at = COALESCE(paid_at, created_at)
+    WHERE status <> 'pendente' AND payment_status = 'pending' AND preference_id IS NULL
+  `);
+  await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_preference_id ON orders(preference_id) WHERE preference_id IS NOT NULL');
+  await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_payment_id ON orders(payment_id) WHERE payment_id IS NOT NULL');
+  await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_checkout_nonce ON orders(checkout_nonce) WHERE checkout_nonce IS NOT NULL');
 
   const orderItemsTable = await db.get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'order_items'");
   const orderItemsSql = String(orderItemsTable?.sql || '');

@@ -14,14 +14,7 @@ export default function CartPage() {
   async function handleCheckout() {
     try {
       setLoadingPayment(true);
-      const produtos = items.map((item) => ({
-        id: item.product_id,
-        titulo: item.name,
-        descricao: item.description || item.name,
-        quantidade: item.quantity,
-        preco: Number(item.price)
-      }));
-      const response = await criarPagamento(produtos);
+      const response = await criarPagamento();
       window.location.href = response.init_point;
     } catch (error) {
       const message = error?.response?.data?.message || 'Nao foi possivel iniciar o pagamento.';

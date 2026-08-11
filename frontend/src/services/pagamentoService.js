@@ -1,6 +1,6 @@
 import api from './api';
 
-export async function criarPagamento(produtos) {
-  const response = await api.post('/pagamento/criar', { produtos });
+export async function criarPagamento() {
+  const response = await api.post('/pagamento/criar');
   return response.data;
 }

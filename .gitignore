@@ -10,6 +10,9 @@ coverage/
 backend/src/database/*.sqlite
 backend/src/database/*.sqlite-*
 
+# Uploads pertencem ao volume persistente; nao ao repositorio.
+backend/uploads/
+
 .env
 .env.*
 !.env.example

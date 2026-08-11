@@ -7,7 +7,9 @@
   }
 
   const status = err.statusCode || err.status || 500;
-  const message = err.message || 'Erro interno do servidor';
+  const message = process.env.NODE_ENV === 'production' && status >= 500
+    ? 'Erro interno do servidor'
+    : err.message || 'Erro interno do servidor';
 
   if (process.env.NODE_ENV !== 'test') {
     console.error(err);

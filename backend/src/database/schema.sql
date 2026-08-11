@@ -45,8 +45,19 @@ CREATE TABLE IF NOT EXISTS orders (
   user_id INTEGER NOT NULL,
   total REAL NOT NULL CHECK(total >= 0),
   status TEXT NOT NULL CHECK(status IN ('pendente', 'pago', 'em_andamento', 'enviado', 'entregue')) DEFAULT 'pendente',
+  payment_status TEXT NOT NULL CHECK(payment_status IN ('pending', 'approved', 'rejected', 'cancelled', 'refunded')) DEFAULT 'pending',
+  payment_id TEXT,
+  preference_id TEXT,
+  checkout_nonce TEXT,
+  payment_amount REAL,
+  payment_currency TEXT,
+  payment_live_mode INTEGER CHECK(payment_live_mode IN (0, 1)),
+  stock_deducted INTEGER NOT NULL DEFAULT 0 CHECK(stock_deducted IN (0, 1)),
+  fulfillment_error TEXT,
+  paid_at DATETIME,
   hidden_by_user INTEGER NOT NULL DEFAULT 0 CHECK(hidden_by_user IN (0, 1)),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
