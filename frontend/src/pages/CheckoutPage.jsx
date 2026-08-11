@@ -14,6 +14,7 @@ const statusMessage = {
 export default function CheckoutPage() {
   const [searchParams] = useSearchParams();
   const pedidoId = searchParams.get('pedido_id');
+  const paymentId = searchParams.get('payment_id') || searchParams.get('collection_id');
   const returnHint = searchParams.get('payment_status');
   const [status, setStatus] = useState(null);
   const [checking, setChecking] = useState(Boolean(pedidoId));
@@ -32,7 +33,9 @@ export default function CheckoutPage() {
 
     async function checkOrder() {
       try {
-        const { data } = await api.get(`/pagamento/pedidos/${pedidoId}`);
+        const { data } = attempts === 0 && paymentId && /^\d+$/.test(paymentId)
+          ? await api.post(`/pagamento/pedidos/${pedidoId}/reconciliar`, { payment_id: paymentId })
+          : await api.get(`/pagamento/pedidos/${pedidoId}`);
         if (cancelled) return;
         setStatus(data.payment_status);
         setError(data.fulfillment_error || '');
@@ -48,11 +51,18 @@ export default function CheckoutPage() {
           return;
         }
         timer = window.setTimeout(checkOrder, 2000);
-      } catch {
-        if (!cancelled) {
-          setError('Nao foi possivel confirmar o pedido agora. Consulte Meus pedidos em instantes.');
-          setChecking(false);
+      } catch (requestError) {
+        if (cancelled) return;
+        attempts += 1;
+        const statusCode = requestError?.response?.status;
+        const permanentFailure = [400, 403, 409, 422].includes(statusCode);
+        if (!permanentFailure && attempts < 10) {
+          timer = window.setTimeout(checkOrder, 2000);
+          return;
         }
+        setError(requestError?.response?.data?.message
+          || 'Nao foi possivel confirmar o pedido agora. Consulte Meus pedidos em instantes.');
+        setChecking(false);
       }
     }
 
@@ -61,7 +71,7 @@ export default function CheckoutPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [pedidoId]);
+  }, [pedidoId, paymentId]);
 
   const effectiveStatus = status || (checking ? 'pending' : null);
   const message = statusMessage[effectiveStatus] || 'Pagamento em andamento';

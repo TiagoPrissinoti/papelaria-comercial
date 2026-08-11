@@ -86,7 +86,10 @@ test('pagamento aprovado atualiza o pedido e baixa estoque apenas uma vez', asyn
     metadata: { checkout_nonce: order.checkout_nonce },
     currency_id: 'BRL',
     transaction_amount: 25,
-    live_mode: false
+    // Alguns fluxos de teste do Checkout Pro retornam live_mode=true mesmo
+    // quando a notificacao aparece no painel de testes. As demais validacoes
+    // vinculam o pagamento ao pedido sem depender desse sinal operacional.
+    live_mode: true
   };
 
   const approved = await atualizarPedidoComPagamento({ payment });

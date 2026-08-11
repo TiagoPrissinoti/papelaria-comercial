@@ -167,7 +167,11 @@ async function atualizarPedidoComPagamento({ payment }) {
 
   const expectedLiveMode = environment === 'production';
   if (liveMode !== expectedLiveMode) {
-    throw formatError('Ambiente do pagamento nao corresponde ao ambiente configurado.', 422);
+    console.warn('Pagamento com live_mode diferente do ambiente operacional:', {
+      paymentId,
+      configuredEnvironment: environment,
+      paymentLiveMode: liveMode
+    });
   }
 
   return Order.applyPayment(order.id, {

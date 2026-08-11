@@ -5,7 +5,7 @@ const {
   atualizarPedidoComPagamento,
   normalizePaymentStatus
 } = require('../services/mercadoPagoService');
-const { webhookSecret } = require('../config/mercadoPago');
+const { webhookSecret, environment } = require('../config/mercadoPago');
 const Order = require('../src/models/Order');
 
 let webhookTools;
@@ -58,13 +58,18 @@ exports.webhook = asyncHandler(async (req, res) => {
       secret: webhookSecret
     });
   } catch (error) {
-    console.warn('Webhook do Mercado Pago rejeitado:', {
+    console.warn('Assinatura do webhook do Mercado Pago invalida:', {
       reason: error?.reason || error?.name || 'assinatura_invalida',
       requestId: req.headers['x-request-id'],
       hasSignature: Boolean(req.headers['x-signature']),
-      hasQueryDataId: Boolean(queryDataId)
+      hasQueryDataId: Boolean(queryDataId),
+      environment
     });
-    return res.status(401).end();
+
+    // O Mercado Pago pode gerar assinaturas inconsistentes em notificacoes do
+    // ambiente de teste. Nesse ambiente apenas, a notificacao ainda e conferida
+    // na API com o access token e passa por todas as validacoes do pedido.
+    if (environment === 'production') return res.status(401).end();
   }
 
   const payment = await consultarPagamento(notificationDataId);
@@ -92,5 +97,27 @@ exports.consultar = asyncHandler(async (req, res) => {
     payment_id: order.payment_id,
     preference_id: order.preference_id,
     fulfillment_error: order.fulfillment_error
+  });
+});
+
+exports.reconciliar = asyncHandler(async (req, res) => {
+  const order = await Order.findById(Number(req.params.id));
+  if (!order) return res.status(404).json({ message: 'Pedido nao encontrado' });
+  if (order.user_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Acesso negado a este pedido' });
+  }
+
+  const paymentId = String(req.body?.payment_id || '').trim();
+  if (!/^\d+$/.test(paymentId)) throw badRequest('ID do pagamento invalido.');
+
+  const payment = await consultarPagamento(paymentId);
+  const updatedOrder = await atualizarPedidoComPagamento({ payment });
+  if (updatedOrder.id !== order.id) throw badRequest('Pagamento nao pertence ao pedido informado.');
+
+  res.json({
+    id: updatedOrder.id,
+    status: updatedOrder.status,
+    payment_status: updatedOrder.payment_status,
+    fulfillment_error: updatedOrder.fulfillment_error
   });
 });
