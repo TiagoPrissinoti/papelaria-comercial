@@ -14,6 +14,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/OrdersPage';
 import AdminPage from './pages/AdminPage';
 import AccessDeniedPage from './pages/AccessDeniedPage';
+import InformationPage from './pages/InformationPage';
 
 export default function App() {
   const location = useLocation();
@@ -36,6 +37,12 @@ export default function App() {
           <Route path="/meus-pedidos" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
           <Route path="/acesso-negado" element={<ProtectedRoute><AccessDeniedPage /></ProtectedRoute>} />
+          <Route path="/sobre-nos" element={<InformationPage page="about" />} />
+          <Route path="/politica-de-privacidade" element={<InformationPage page="privacy" />} />
+          <Route path="/termos-de-uso" element={<InformationPage page="terms" />} />
+          <Route path="/central-de-ajuda" element={<InformationPage page="help" />} />
+          <Route path="/trocas-e-devolucoes" element={<InformationPage page="returns" />} />
+          <Route path="/prazos-de-entrega" element={<InformationPage page="delivery" />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </main>

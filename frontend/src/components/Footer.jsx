@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export default function Footer() {
   const year = new Date().getFullYear();
 
@@ -11,16 +13,16 @@ export default function Footer() {
 
         <section>
           <h4>Institucional</h4>
-          <a href="#">Sobre nos</a>
-          <a href="#">Politica de privacidade</a>
-          <a href="#">Termos de uso</a>
+          <Link to="/sobre-nos">Sobre nós</Link>
+          <Link to="/politica-de-privacidade">Política de privacidade</Link>
+          <Link to="/termos-de-uso">Termos de uso</Link>
         </section>
 
         <section>
           <h4>Atendimento</h4>
-          <a href="#">Central de ajuda</a>
-          <a href="#">Trocas e devolucoes</a>
-          <a href="#">Prazos de entrega</a>
+          <Link to="/central-de-ajuda">Central de ajuda</Link>
+          <Link to="/trocas-e-devolucoes">Trocas e devoluções</Link>
+          <Link to="/prazos-de-entrega">Prazos de entrega</Link>
         </section>
 
         <section>
@@ -33,7 +35,7 @@ export default function Footer() {
 
       <div className="footer-bottom">
         <div className="container footer-inner">
-          <p>� {year} Papelaria Comercial. Todos os direitos reservados.</p>
+          <p>© {year} Papelaria Comercial. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>
