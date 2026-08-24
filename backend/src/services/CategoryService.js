@@ -7,13 +7,13 @@ class CategoryService {
   }
 
   static async create(data) {
-    return Category.create(data);
+    return Category.create({ name: data.name });
   }
 
   static async update(id, data) {
     const existing = await Category.findById(id);
     if (!existing) throw new AppError('Categoria nao encontrada', 404);
-    return Category.update(id, data);
+    return Category.update(id, { name: data.name });
   }
 
   static async delete(id) {

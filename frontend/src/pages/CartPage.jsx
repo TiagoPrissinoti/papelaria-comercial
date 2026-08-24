@@ -108,6 +108,7 @@ export default function CartPage() {
               <strong>R$ {Number(total).toFixed(2)}</strong>
             </div>
             <p className="muted">A próxima etapa abre o Checkout Pro do Mercado Pago em uma nova experiência segura.</p>
+            <div className="checkout-security-note"><span aria-hidden="true">✓</span><p><strong>Pagamento protegido</strong><small>Você será direcionado ao ambiente seguro do Mercado Pago.</small></p></div>
             <button className="btn btn-primary checkout-cta" onClick={handleCheckout} disabled={loadingPayment}>
               {loadingPayment ? 'Preparando...' : 'Finalizar Compra'}
             </button>

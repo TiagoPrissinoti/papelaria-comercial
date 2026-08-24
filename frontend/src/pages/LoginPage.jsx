@@ -21,38 +21,25 @@ export default function LoginPage() {
   }
 
   return (
-    <section className="auth-page auth-page-login login-surface">
-      <div className="login-orb login-orb-left" aria-hidden="true" />
-      <div className="login-orb login-orb-right" aria-hidden="true" />
-      <div className="login-brand-floating">
-        <span className="login-brand-name">Papelaria Pro</span>
-        <p>Materiais escolares, escritório e organização em um só lugar.</p>
-      </div>
-
-      <div className="login-card-shell">
+    <section className="auth-page auth-page-login">
+      <aside className="auth-visual">
+        <Link to="/vitrine" className="auth-brand"><span>P</span><strong>Papelaria Comercial</strong></Link>
+        <div className="auth-visual-copy">
+          <p className="section-eyebrow">Bem-vindo de volta</p>
+          <h2>Tudo para suas ideias, em um só lugar.</h2>
+          <p>Entre para acompanhar pedidos, organizar seu carrinho e continuar suas compras com segurança.</p>
+        </div>
+        <div className="auth-proof"><span>✓</span><p><strong>Compra protegida</strong><small>Sua sessão e seus dados ficam seguros.</small></p></div>
+      </aside>
+      <div className="login-card-shell auth-form-side">
         <form onSubmit={handleSubmit} className="auth-card">
-          <h1>Entrar</h1>
-          {error && <p className="error">{error}</p>}
-          <Input
-            placeholder="Email"
-            type="email"
-            required
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-          <Input
-            placeholder="Senha"
-            type="password"
-            required
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
+          <div className="auth-card-head"><p className="section-eyebrow">Acesse sua conta</p><h1>Entrar</h1><p>Use seu e-mail e senha para continuar.</p></div>
+          {error && <p className="error" role="alert">{error}</p>}
+          <label className="field-label">E-mail<Input placeholder="voce@exemplo.com" type="email" autoComplete="email" required onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+          <label className="field-label">Senha<Input placeholder="Digite sua senha" type="password" autoComplete="current-password" required onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
           <Button type="submit">Entrar</Button>
-          <Link to="/vitrine" className="login-showcase-link btn btn-secondary">
-            Ver vitrine
-          </Link>
-          <div className="auth-switch">
-            <span>Não tem cadastro ainda?</span>
-            <Link to="/cadastro">Criar conta</Link>
-          </div>
+          <Link to="/vitrine" className="login-showcase-link btn btn-secondary">Explorar vitrine</Link>
+          <div className="auth-switch"><span>Ainda não tem conta?</span><Link to="/cadastro">Criar conta</Link></div>
         </form>
       </div>
     </section>

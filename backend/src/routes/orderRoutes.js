@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const controller = require('../controllers/orderController');
 const { authMiddleware, isAdmin } = require('../middlewares/auth');
+const allowBodyFields = require('../middlewares/allowBodyFields');
 
 const router = Router();
 
@@ -8,6 +9,6 @@ router.use(authMiddleware);
 router.get('/my', controller.myOrders);
 router.delete('/:id/history', controller.hideFromHistory);
 router.get('/', isAdmin, controller.adminList);
-router.patch('/:id/status', isAdmin, controller.updateStatus);
+router.patch('/:id/status', isAdmin, allowBodyFields('status'), controller.updateStatus);
 
 module.exports = router;

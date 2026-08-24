@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import api, { getUploadsBaseUrl } from '../services/api';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
@@ -369,7 +369,7 @@ export default function ProductPage() {
   // =========================
 
   if (!product) {
-    return <p>Carregando...</p>;
+    return <div className="product-page-loading"><div className="loading-spinner" /><p>Carregando produto...</p></div>;
   }
 
   // =========================
@@ -378,6 +378,12 @@ export default function ProductPage() {
 
   return (
     <section className="reviews-page">
+
+      <nav className="product-breadcrumb" aria-label="Navegação estrutural">
+        <Link to="/">Início</Link><span aria-hidden="true">/</span>
+        <span>{product.category_name || 'Produtos'}</span><span aria-hidden="true">/</span>
+        <strong>{product.name}</strong>
+      </nav>
 
       <section className="product-layout">
 
@@ -399,23 +405,9 @@ export default function ProductPage() {
           <div className="thumbs">
 
             {gallery.map((image) => (
-              <img
-                key={image}
-                src={`${getUploadsBaseUrl()}${image}`}
-                alt="thumb"
-                className={
-                  activeImage === image
-                    ? 'active'
-                    : ''
-                }
-                onClick={() =>
-                  setActiveImage(image)
-                }
-                onError={(event) => {
-                  event.currentTarget.src =
-                    fallback;
-                }}
-              />
+              <button key={image} type="button" className={`thumb-button ${activeImage === image ? 'active' : ''}`} onClick={() => setActiveImage(image)} aria-label="Selecionar imagem do produto">
+                <img src={`${getUploadsBaseUrl()}${image}`} alt="" onError={(event) => { event.currentTarget.src = fallback; }} />
+              </button>
             ))}
 
           </div>
@@ -423,31 +415,41 @@ export default function ProductPage() {
         </div>
 
         <div className="product-info">
-
+          <p className="product-detail-category">{product.category_name || 'Papelaria Comercial'}</p>
           <h1>{product.name}</h1>
-
-          <p>{product.description}</p>
-
+          <div className="product-detail-rating">
+            <StarRow value={Math.round(reviewsData.stats.average)} />
+            <a href="#avaliacoes">{reviewsData.stats.total} avaliação(ões)</a>
+          </div>
           <strong className="product-price">
             R$ {Number(product.price).toFixed(2)}
           </strong>
-
-          <p>Estoque: {product.stock}</p>
-
+          <p className="payment-hint">Pagamento seguro pelo Mercado Pago</p>
+          <div className={`product-stock ${Number(product.stock) > 0 ? 'available' : 'unavailable'}`}>
+            <span aria-hidden="true">{Number(product.stock) > 0 ? '✓' : '×'}</span>
+            {Number(product.stock) > 0 ? `${product.stock} unidade(s) em estoque` : 'Produto indisponível'}
+          </div>
+          <div className="product-short-description">
+            <h2>Sobre este produto</h2>
+            <p>{product.description || 'Produto selecionado para acompanhar sua rotina com qualidade e praticidade.'}</p>
+          </div>
           <button
-            className="btn btn-primary"
+            className="btn btn-primary product-add-button"
             onClick={() =>
               upsertItem(product.id, 1)
             }
           >
             Adicionar ao carrinho
           </button>
-
+          <div className="product-assurances">
+            <div><span aria-hidden="true">✓</span><p><strong>Compra protegida</strong><small>Ambiente seguro</small></p></div>
+            <div><span aria-hidden="true">↗</span><p><strong>Pedido acompanhado</strong><small>Veja cada etapa</small></p></div>
+          </div>
         </div>
 
       </section>
 
-      <section className="reviews-summary">
+      <section id="avaliacoes" className="reviews-summary">
 
         <div className="summary-left">
 
@@ -546,7 +548,7 @@ export default function ProductPage() {
       <section className="reviews-content">
 
         <div className="review-controls">
-
+          <label>Ordenar avaliações
           <select
             value={reviewSort}
             onChange={(e) => {
@@ -567,7 +569,8 @@ export default function ProductPage() {
               Menor nota
             </option>
           </select>
-
+          </label>
+          <label>Filtrar por nota
           <select
             value={reviewFilter}
             onChange={(e) => {
@@ -602,6 +605,7 @@ export default function ProductPage() {
               1 estrela
             </option>
           </select>
+          </label>
 
         </div>
 
@@ -624,25 +628,23 @@ export default function ProductPage() {
               interactive
             />
 
-            <textarea
-              placeholder="Escreva sua avaliação"
-              value={comment}
-              onChange={(e) =>
-                setComment(e.target.value)
-              }
-              rows={5}
-            />
+            <label className="field-label">Seu comentário
+              <textarea
+                placeholder="Conte como foi sua experiência com o produto"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={5}
+              />
+            </label>
 
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(e) =>
-                setImages(
-                  Array.from(e.target.files)
-                )
-              }
-            />
+            <label className="field-label review-file-field">Fotos da avaliação <small>Selecione as imagens que deseja publicar.</small>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => setImages(Array.from(e.target.files))}
+              />
+            </label>
 
             {preview.length > 0 && (
 
@@ -705,15 +707,13 @@ export default function ProductPage() {
               >
 
                 <div className="review-header">
-
-                  <strong>
-                    {review.user_name}
-                  </strong>
-
+                  <div className="review-author">
+                    <span className="review-avatar" aria-hidden="true">{(review.user_name || 'C')[0].toUpperCase()}</span>
+                    <div><strong>{review.user_name}</strong><small>{review.created_at ? new Date(review.created_at).toLocaleDateString('pt-BR') : 'Cliente da loja'}</small></div>
+                  </div>
                   <StarRow
                     value={review.rating}
                   />
-
                 </div>
 
                 <p className="review-comment">
@@ -730,7 +730,7 @@ export default function ProductPage() {
                         <img
                           key={img}
                           src={`${getUploadsBaseUrl()}${img}`}
-                          alt="review"
+                          alt={`Foto publicada por ${review.user_name || 'cliente'}`}
                           onError={(
                             event
                           ) => {

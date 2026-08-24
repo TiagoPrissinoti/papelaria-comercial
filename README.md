@@ -89,6 +89,7 @@ O custo do produto é congelado em `order_items.cost_price`. Assim, o lucro hist
 - JWT não é devolvido no JSON nem salvo em `localStorage` ou `sessionStorage`.
 - O token contém apenas o ID; usuário e perfil são recarregados do banco em cada requisição protegida.
 - Rotas administrativas protegidas por autenticação e autorização no servidor.
+- Endpoints de escrita usam allowlists de campos e rejeitam propriedades extras contra mass assignment.
 - Carrinho, pedidos e avaliações aplicam controle por proprietário.
 - Segredos JWT e Mercado Pago ficam somente nas variáveis do backend.
 - Arquivos `.env`, banco local e uploads não são versionados.

@@ -6,6 +6,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const AppError = require('../utils/AppError');
 const { getDb } = require('../database/connection');
+const allowBodyFields = require('../middlewares/allowBodyFields');
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.get('/users', asyncHandler(async (req, res) => {
   res.json(users);
 }));
 
-router.put('/users/:id', asyncHandler(async (req, res) => {
+router.put('/users/:id', allowBodyFields('name', 'email', 'role'), asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
   if (!id) throw new AppError('Usuario invalido', 400);
 

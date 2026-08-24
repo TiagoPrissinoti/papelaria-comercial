@@ -80,6 +80,7 @@ export default function CheckoutPage() {
     <section className="checkout-shell">
       <article className="empty-checkout">
         <p className="hero-kicker">Retorno do pagamento</p>
+        {checking && <div className="loading-spinner" aria-hidden="true" />}
         <h1>{checking ? 'Confirmando pagamento...' : message}</h1>
         <p>
           {pedidoId ? `Pedido #${pedidoId}. ` : ''}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api, { getUploadsBaseUrl } from '../services/api';
 import Modal from '../components/ui/Modal';
 
@@ -49,15 +50,17 @@ export default function OrdersPage() {
     if (manageOrder?.id === orderId) setManageOrder(null);
   }
 
-  if (loading) return <p>Carregando pedidos...</p>;
+  if (loading) return <div className="orders-loading"><div className="loading-spinner" /><p>Carregando seus pedidos...</p></div>;
 
   return (
-    <section>
-      <h1>Meus pedidos</h1>
+    <section className="orders-page">
+      <header className="page-heading"><div><p className="section-eyebrow">Sua conta</p><h1>Meus pedidos</h1><p>Acompanhe o pagamento, a separação e a entrega de cada compra.</p></div></header>
+      {!orders.length && <div className="empty-state"><span aria-hidden="true">□</span><h3>Você ainda não tem pedidos</h3><p>Quando fizer sua primeira compra, ela aparecerá aqui.</p><Link className="btn btn-primary" to="/">Explorar produtos</Link></div>}
       {orders.map((order) => (
         <article key={order.id} className="order-card">
           <div className="order-head">
-            <h3>Pedido #{order.id}</h3>
+            <div><small>Pedido realizado em {new Date(order.created_at).toLocaleDateString('pt-BR')}</small><h3>Pedido #{order.id}</h3></div>
+            <span className={`order-status-badge ${order.status}`}>{statusLabel[order.status] || order.status}</span>
           </div>
           <p>Total: R$ {Number(order.total).toFixed(2)} | Rastreio: GFL-{order.id}</p>
           <p><strong>Pagamento:</strong> {paymentStatusLabel[order.payment_status] || order.payment_status}</p>

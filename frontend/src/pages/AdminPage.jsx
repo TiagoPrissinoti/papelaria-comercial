@@ -433,15 +433,15 @@ export default function AdminPage() {
 
       <Modal title="Novo produto" open={modalOpen} onClose={() => setModalOpen(false)}>
         <form className="admin-form" onSubmit={createProduct}>
-          <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <Input placeholder="Descricao" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
-          <Input placeholder="Preco" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
-          <Input placeholder="Custo de compra" type="number" step="0.01" min="0" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} required />
-          <Input placeholder="Estoque" type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required />
-          <select className="input" value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} required>
+          <label>Nome<Input placeholder="Nome do produto" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>
+          <label>Descrição<Input placeholder="Descrição curta e objetiva" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required /></label>
+          <label>Preço de venda<Input placeholder="0,00" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required /></label>
+          <label>Custo de compra<Input placeholder="0,00" type="number" step="0.01" min="0" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} required /></label>
+          <label>Estoque<Input placeholder="Quantidade disponível" type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required /></label>
+          <label>Categoria<select className="input" value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} required>
             <option value="">Selecione a categoria</option>
             {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-          </select>
+          </select></label>
           <label>Imagem principal</label>
           <Input type="file" accept={imageAccept} onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })} />
           <label>Galeria</label>

@@ -60,6 +60,73 @@ test('cadastro publico nunca permite criar administrador', async () => {
   assert.equal(user.role, 'client');
 });
 
+test('rotas rejeitam campos fora da allowlist contra mass assignment', async () => {
+  await app.initializeApp();
+  const db = await getDb();
+  const adminCredentials = {
+    name: 'Admin Allowlist',
+    email: 'admin-allowlist@teste.local',
+    password: 'senha-admin-allowlist'
+  };
+  const admin = await AuthService.register(adminCredentials);
+  await db.run("UPDATE users SET role = 'admin' WHERE id = ?", [admin.id]);
+
+  const server = await new Promise((resolve) => {
+    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+  });
+
+  try {
+    const address = server.address();
+    const baseUrl = `http://127.0.0.1:${address.port}/api`;
+    const forbiddenEmail = 'mass-assignment@teste.local';
+    const registerResponse = await fetch(`${baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Tentativa Admin',
+        email: forbiddenEmail,
+        password: 'senha-segura',
+        role: 'admin'
+      })
+    });
+    assert.equal(registerResponse.status, 400);
+    assert.match((await registerResponse.json()).message, /Campos nao permitidos: role/);
+    assert.equal(await db.get('SELECT id FROM users WHERE email = ?', [forbiddenEmail]), undefined);
+
+    const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: adminCredentials.email, password: adminCredentials.password })
+    });
+    assert.equal(loginResponse.status, 200);
+    const cookie = loginResponse.headers.get('set-cookie').split(';')[0];
+
+    const productResponse = await fetch(`${baseUrl}/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({
+        name: 'Produto Mass Assignment',
+        description: 'Nao deve ser criado',
+        price: 10,
+        costPrice: 5,
+        stock: 1,
+        categoryId: null,
+        is_active: 0
+      })
+    });
+    assert.equal(productResponse.status, 400);
+    assert.match((await productResponse.json()).message, /Campos nao permitidos: is_active/);
+    assert.equal(
+      await db.get("SELECT id FROM products WHERE name = 'Produto Mass Assignment'"),
+      undefined
+    );
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+});
+
 test('sessao usa cookie HttpOnly e recarrega permissoes no servidor', async () => {
   await app.initializeApp();
   const credentials = {

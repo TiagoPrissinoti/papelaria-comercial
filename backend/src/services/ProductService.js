@@ -21,7 +21,8 @@ class ProductService {
   static async create(payload, files) {
     const { main, gallery } = extractImagePaths(files);
     return Product.create({
-      ...payload,
+      name: payload.name,
+      description: payload.description,
       categoryId: payload.categoryId ? Number(payload.categoryId) : null,
       price: Number(payload.price),
       costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : 0,
@@ -38,7 +39,8 @@ class ProductService {
     const { main, gallery } = extractImagePaths(files);
 
     const product = await Product.update(id, {
-      ...payload,
+      name: payload.name,
+      description: payload.description,
       categoryId: payload.categoryId ? Number(payload.categoryId) : undefined,
       price: payload.price !== undefined ? Number(payload.price) : undefined,
       costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : undefined,
