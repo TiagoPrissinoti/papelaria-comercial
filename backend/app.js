@@ -15,6 +15,7 @@ const app = express();
 const frontendDist = path.resolve(__dirname, '..', 'frontend', 'dist');
 
 app.use(cors({
+  credentials: true,
   origin(origin, callback) {
     if (!origin || process.env.NODE_ENV !== 'production' || origin === getFrontendUrl()) {
       return callback(null, true);

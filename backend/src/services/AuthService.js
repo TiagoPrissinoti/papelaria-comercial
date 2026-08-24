@@ -27,7 +27,9 @@ class AuthService {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new AppError('Credenciais invalidas', 401);
 
-    const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, jwtSecret, { expiresIn: '1d' });
+    // O cookie e HttpOnly; o JWT nao carrega email nem perfil. Esses dados sao
+    // sempre recarregados do banco pelo middleware de autenticacao.
+    const token = jwt.sign({}, jwtSecret, { subject: String(user.id), expiresIn: '1d' });
 
     return {
       token,

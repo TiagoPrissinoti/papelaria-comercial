@@ -5,11 +5,12 @@ import { useAuth } from '../hooks/useAuth';
 export const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const { token } = useAuth();
+  const { token, loading } = useAuth();
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
 
   async function refreshCart() {
+    if (loading) return;
     if (!token) {
       setItems([]);
       setTotal(0);
@@ -22,7 +23,7 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     refreshCart();
-  }, [token]);
+  }, [token, loading]);
 
   async function upsertItem(productId, quantity) {
     if (!token) return;

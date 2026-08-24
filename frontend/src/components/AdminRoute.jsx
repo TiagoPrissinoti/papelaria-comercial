@@ -2,7 +2,8 @@
 import { useAuth } from '../hooks/useAuth';
 
 export default function AdminRoute({ children }) {
-  const { token, user } = useAuth();
+  const { token, user, loading } = useAuth();
+  if (loading) return null;
   if (!token) return <Navigate to="/login" replace />;
   if (user?.role !== 'admin') return <Navigate to="/acesso-negado" replace />;
   return children;

@@ -60,6 +60,63 @@ test('cadastro publico nunca permite criar administrador', async () => {
   assert.equal(user.role, 'client');
 });
 
+test('sessao usa cookie HttpOnly e recarrega permissoes no servidor', async () => {
+  await app.initializeApp();
+  const credentials = {
+    name: 'Cliente Cookie',
+    email: 'cliente-cookie@teste.local',
+    password: 'senha-cookie-segura'
+  };
+  const createdUser = await AuthService.register(credentials);
+  const server = await new Promise((resolve) => {
+    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+  });
+
+  try {
+    const address = server.address();
+    const baseUrl = `http://127.0.0.1:${address.port}/api`;
+    const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: credentials.email, password: credentials.password })
+    });
+    assert.equal(loginResponse.status, 200);
+
+    const loginBody = await loginResponse.json();
+    assert.equal(loginBody.token, undefined);
+    assert.equal(loginBody.user.id, createdUser.id);
+
+    const setCookie = loginResponse.headers.get('set-cookie');
+    assert.match(setCookie, /^papelaria_session=/);
+    assert.match(setCookie, /HttpOnly/i);
+    assert.match(setCookie, /SameSite=Lax/i);
+    assert.match(setCookie, /Path=\/api/i);
+    const cookie = setCookie.split(';')[0];
+
+    const db = await getDb();
+    await db.run("UPDATE users SET role = 'admin' WHERE id = ?", [createdUser.id]);
+
+    const meResponse = await fetch(`${baseUrl}/auth/me`, {
+      headers: { Cookie: cookie }
+    });
+    assert.equal(meResponse.status, 200);
+    const meBody = await meResponse.json();
+    assert.equal(meBody.user.role, 'admin');
+    assert.equal(meBody.user.password, undefined);
+
+    const logoutResponse = await fetch(`${baseUrl}/auth/logout`, {
+      method: 'POST',
+      headers: { Cookie: cookie }
+    });
+    assert.equal(logoutResponse.status, 204);
+    assert.match(logoutResponse.headers.get('set-cookie'), /papelaria_session=;/);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+});
+
 test('pagamento aprovado atualiza o pedido e baixa estoque apenas uma vez', async () => {
   await app.initializeApp();
   const db = await getDb();

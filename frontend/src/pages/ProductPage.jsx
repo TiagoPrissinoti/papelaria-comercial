@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api, { getUploadsBaseUrl } from '../services/api';
 import { useCart } from '../hooks/useCart';
+import { useAuth } from '../hooks/useAuth';
 
 const fallback =
   'https://via.placeholder.com/600x400?text=Sem+Imagem';
@@ -41,6 +42,7 @@ function StarRow({
 }
 
 export default function ProductPage() {
+  const { token } = useAuth();
   const { id } = useParams();
 
   const { upsertItem } = useCart();
@@ -94,9 +96,7 @@ export default function ProductPage() {
 
   const [message, setMessage] = useState('');
 
-  const isAuthenticated = Boolean(
-    sessionStorage.getItem('token')
-  );
+  const isAuthenticated = token;
 
   // =========================
   // MEMOS
@@ -158,18 +158,8 @@ export default function ProductPage() {
 
         params.set('pageSize', '6');
 
-        const token =
-          sessionStorage.getItem('token');
-
         const res = await api.get(
-          `/reviews/products/${id}?${params.toString()}`,
-          {
-            headers: token
-              ? {
-                  Authorization: `Bearer ${token}`
-                }
-              : {}
-          }
+          `/reviews/products/${id}?${params.toString()}`
         );
 
         setReviewsData((prev) =>
@@ -196,7 +186,8 @@ export default function ProductPage() {
     id,
     reviewFilter,
     reviewSort,
-    reviewPage
+    reviewPage,
+    token
   ]);
 
   useEffect(() => {
@@ -246,18 +237,8 @@ export default function ProductPage() {
 
       params.set('pageSize', '6');
 
-      const token =
-        sessionStorage.getItem('token');
-
       const res = await api.get(
-        `/reviews/products/${id}?${params.toString()}`,
-        {
-          headers: token
-            ? {
-                Authorization: `Bearer ${token}`
-              }
-            : {}
-        }
+        `/reviews/products/${id}?${params.toString()}`
       );
 
       setReviewsData(res.data);
