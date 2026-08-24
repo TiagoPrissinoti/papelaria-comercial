@@ -69,6 +69,22 @@ function buildPreferenceItems(items) {
   }));
 }
 
+async function criarReembolsoTotal(paymentId) {
+  if (!accessToken) throw formatError('MERCADO_PAGO_ACCESS_TOKEN nao configurado.', 500);
+  const response = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}/refunds`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': `papelaria-refund-${paymentId}`
+    }
+  });
+  if (!response.ok) {
+    throw formatError(`Falha ao reembolsar automaticamente o pagamento (${response.status}).`, 502);
+  }
+  return response.json();
+}
+
 async function criarPreferencia({ clienteId, payerEmail, requestOrigin }) {
   if (!Preference) throw formatError('A SDK mercadopago nao esta instalada no backend.', 500);
 
@@ -85,7 +101,10 @@ async function criarPreferencia({ clienteId, payerEmail, requestOrigin }) {
       order_id: order.id,
       user_id: clienteId,
       checkout_nonce: order.checkout_nonce
-    }
+    },
+    expires: true,
+    expiration_date_from: new Date().toISOString(),
+    expiration_date_to: new Date(order.reservation_expires_at).toISOString()
   };
 
   if (payerEmail) preferencePayload.payer = { email: payerEmail };
@@ -174,19 +193,33 @@ async function atualizarPedidoComPagamento({ payment }) {
     });
   }
 
-  return Order.applyPayment(order.id, {
+  const updatedOrder = await Order.applyPayment(order.id, {
     id: paymentId,
     status: paymentStatus,
     amount,
     currency,
     liveMode
   });
+
+  if (paymentStatus === 'approved' && updatedOrder.fulfillment_error && !updatedOrder.stock_deducted) {
+    await criarReembolsoTotal(paymentId);
+    return Order.applyPayment(order.id, {
+      id: paymentId,
+      status: 'refunded',
+      amount,
+      currency,
+      liveMode
+    });
+  }
+
+  return updatedOrder;
 }
 
 module.exports = {
   criarPreferencia,
   consultarPagamento,
   atualizarPedidoComPagamento,
+  criarReembolsoTotal,
   normalizePaymentStatus,
   toCents
 };

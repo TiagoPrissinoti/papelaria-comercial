@@ -119,6 +119,8 @@ async function initializeApp() {
     ['payment_amount', 'ALTER TABLE orders ADD COLUMN payment_amount REAL'],
     ['payment_currency', 'ALTER TABLE orders ADD COLUMN payment_currency TEXT'],
     ['payment_live_mode', 'ALTER TABLE orders ADD COLUMN payment_live_mode INTEGER'],
+    ['inventory_reserved', 'ALTER TABLE orders ADD COLUMN inventory_reserved INTEGER NOT NULL DEFAULT 0'],
+    ['reservation_expires_at', 'ALTER TABLE orders ADD COLUMN reservation_expires_at DATETIME'],
     ['stock_deducted', 'ALTER TABLE orders ADD COLUMN stock_deducted INTEGER NOT NULL DEFAULT 0'],
     ['fulfillment_error', 'ALTER TABLE orders ADD COLUMN fulfillment_error TEXT'],
     ['paid_at', 'ALTER TABLE orders ADD COLUMN paid_at DATETIME'],
@@ -136,6 +138,54 @@ async function initializeApp() {
   await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_preference_id ON orders(preference_id) WHERE preference_id IS NOT NULL');
   await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_payment_id ON orders(payment_id) WHERE payment_id IS NOT NULL');
   await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_checkout_nonce ON orders(checkout_nonce) WHERE checkout_nonce IS NOT NULL');
+
+  const currentOrdersTable = await db.get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'orders'");
+  const currentOrdersSql = String(currentOrdersTable?.sql || '');
+  if (!currentOrdersSql.includes("'reembolsado'") || !currentOrdersSql.includes("'cancelado'")) {
+    await db.exec('PRAGMA foreign_keys = OFF');
+    await db.exec(`
+      BEGIN TRANSACTION;
+      ALTER TABLE orders RENAME TO orders_old;
+      CREATE TABLE orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        total REAL NOT NULL CHECK(total >= 0),
+        status TEXT NOT NULL CHECK(status IN ('pendente', 'pago', 'em_andamento', 'enviado', 'entregue', 'cancelado', 'reembolsado')) DEFAULT 'pendente',
+        payment_status TEXT NOT NULL CHECK(payment_status IN ('pending', 'approved', 'rejected', 'cancelled', 'refunded')) DEFAULT 'pending',
+        payment_id TEXT,
+        preference_id TEXT,
+        checkout_nonce TEXT,
+        payment_amount REAL,
+        payment_currency TEXT,
+        payment_live_mode INTEGER CHECK(payment_live_mode IN (0, 1)),
+        inventory_reserved INTEGER NOT NULL DEFAULT 0 CHECK(inventory_reserved IN (0, 1)),
+        reservation_expires_at DATETIME,
+        stock_deducted INTEGER NOT NULL DEFAULT 0 CHECK(stock_deducted IN (0, 1)),
+        fulfillment_error TEXT,
+        paid_at DATETIME,
+        hidden_by_user INTEGER NOT NULL DEFAULT 0 CHECK(hidden_by_user IN (0, 1)),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      INSERT INTO orders (
+        id, user_id, total, status, payment_status, payment_id, preference_id, checkout_nonce,
+        payment_amount, payment_currency, payment_live_mode, inventory_reserved, reservation_expires_at,
+        stock_deducted, fulfillment_error, paid_at, hidden_by_user, created_at, updated_at
+      )
+      SELECT
+        id, user_id, total, status, payment_status, payment_id, preference_id, checkout_nonce,
+        payment_amount, payment_currency, payment_live_mode, inventory_reserved, reservation_expires_at,
+        stock_deducted, fulfillment_error, paid_at, hidden_by_user, created_at, updated_at
+      FROM orders_old;
+      DROP TABLE orders_old;
+      COMMIT;
+    `);
+    await db.exec('PRAGMA foreign_keys = ON');
+    await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_preference_id ON orders(preference_id) WHERE preference_id IS NOT NULL');
+    await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_payment_id ON orders(payment_id) WHERE payment_id IS NOT NULL');
+    await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_checkout_nonce ON orders(checkout_nonce) WHERE checkout_nonce IS NOT NULL');
+  }
 
   const orderItemsTable = await db.get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'order_items'");
   const orderItemsSql = String(orderItemsTable?.sql || '');

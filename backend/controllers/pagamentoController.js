@@ -111,8 +111,10 @@ exports.reconciliar = asyncHandler(async (req, res) => {
   if (!/^\d+$/.test(paymentId)) throw badRequest('ID do pagamento invalido.');
 
   const payment = await consultarPagamento(paymentId);
+  if (String(payment?.external_reference || '') !== String(order.id)) {
+    throw badRequest('Pagamento nao pertence ao pedido informado.');
+  }
   const updatedOrder = await atualizarPedidoComPagamento({ payment });
-  if (updatedOrder.id !== order.id) throw badRequest('Pagamento nao pertence ao pedido informado.');
 
   res.json({
     id: updatedOrder.id,

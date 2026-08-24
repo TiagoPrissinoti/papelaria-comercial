@@ -14,7 +14,9 @@ const statusLabel = {
   pago: 'finalizado',
   em_andamento: 'em andamento',
   enviado: 'saiu para entrega',
-  entregue: 'entregue'
+  entregue: 'entregue',
+  cancelado: 'cancelado',
+  reembolsado: 'reembolsado'
 };
 
 export default function AdminPage() {
@@ -174,13 +176,27 @@ export default function AdminPage() {
   }
 
   function printReport() {
-    const content = orders
-      .map((o) => `<tr><td>#${o.id} (GFL-${o.id})</td><td>${o.user_name}</td><td>${statusLabel[o.status] || o.status}</td><td>R$ ${Number(o.total).toFixed(2)}</td></tr>`)
-      .join('');
     const win = window.open('', '_blank');
     if (!win) return;
-    win.document.write(`<html><head><title>Relatorio</title></head><body><h1>Relatorio de vendas</h1><table border="1" cellpadding="8" cellspacing="0"><tr><th>Pedido</th><th>Cliente</th><th>Status</th><th>Total</th></tr>${content}</table></body></html>`);
+    win.opener = null;
+    win.document.write('<!doctype html><html><head><title>Relatorio</title></head><body><h1>Relatorio de vendas</h1><table border="1" cellpadding="8" cellspacing="0"><thead><tr><th>Pedido</th><th>Cliente</th><th>Status</th><th>Total</th></tr></thead><tbody></tbody></table></body></html>');
     win.document.close();
+    const tbody = win.document.querySelector('tbody');
+    for (const order of orders) {
+      const row = win.document.createElement('tr');
+      const values = [
+        `#${order.id} (GFL-${order.id})`,
+        order.user_name,
+        statusLabel[order.status] || order.status,
+        `R$ ${Number(order.total).toFixed(2)}`
+      ];
+      for (const value of values) {
+        const cell = win.document.createElement('td');
+        cell.textContent = String(value ?? '');
+        row.appendChild(cell);
+      }
+      tbody.appendChild(row);
+    }
     win.print();
   }
 
@@ -390,6 +406,8 @@ export default function AdminPage() {
                     >
                       {o.status === 'pendente' && <option value="pendente">Aguardando pagamento</option>}
                       {o.status === 'pago' && <option value="pago">Pagamento aprovado</option>}
+                      {o.status === 'cancelado' && <option value="cancelado">Cancelado</option>}
+                      {o.status === 'reembolsado' && <option value="reembolsado">Reembolsado</option>}
                       <option value="em_andamento">Em andamento</option>
                       <option value="enviado">Saiu para entrega</option>
                       <option value="entregue">Entregue</option>

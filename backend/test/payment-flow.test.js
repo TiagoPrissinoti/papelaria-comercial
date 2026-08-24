@@ -10,6 +10,7 @@ const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'papelaria-payment-'));
 process.env.NODE_ENV = 'test';
 process.env.DB_PATH = path.join(testDir, 'database.sqlite');
 process.env.MERCADO_PAGO_ENVIRONMENT = 'test';
+process.env.MERCADO_PAGO_ACCESS_TOKEN = 'TEST_TOKEN';
 
 const app = require('../app');
 const { getDb } = require('../src/database/connection');
@@ -228,4 +229,259 @@ test('pagamento aprovado atualiza o pedido e baixa estoque apenas uma vez', asyn
   await atualizarPedidoComPagamento({ payment });
   const afterDuplicateWebhook = await db.get('SELECT stock FROM products WHERE id = ?', [product.lastID]);
   assert.equal(afterDuplicateWebhook.stock, 3);
+});
+
+test('reserva atomica impede vender a mesma ultima unidade para dois checkouts', async () => {
+  await app.initializeApp();
+  const db = await getDb();
+  const first = await AuthService.register({
+    name: 'Cliente Reserva Um',
+    email: 'reserva-um@teste.local',
+    password: 'senha-reserva-um'
+  });
+  const second = await AuthService.register({
+    name: 'Cliente Reserva Dois',
+    email: 'reserva-dois@teste.local',
+    password: 'senha-reserva-dois'
+  });
+  const product = await db.run(
+    `INSERT INTO products (name, price, cost_price, stock, images)
+     VALUES ('Ultima unidade', 15, 5, 1, '[]')`
+  );
+  await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [first.id, product.lastID]);
+  await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [second.id, product.lastID]);
+
+  const firstCheckout = await Order.createPendingFromCart(first.id);
+  await assert.rejects(() => Order.createPendingFromCart(second.id), /Estoque insuficiente/);
+
+  assert.equal(firstCheckout.order.inventory_reserved, 1);
+  assert.equal(firstCheckout.order.stock_deducted, 0);
+  assert.equal((await db.get('SELECT stock FROM products WHERE id = ?', [product.lastID])).stock, 0);
+});
+
+test('reembolso muda o status operacional e devolve o estoque uma unica vez', async () => {
+  await app.initializeApp();
+  const db = await getDb();
+  const user = await AuthService.register({
+    name: 'Cliente Reembolso',
+    email: 'reembolso@teste.local',
+    password: 'senha-reembolso'
+  });
+  const product = await db.run(
+    `INSERT INTO products (name, price, cost_price, stock, images)
+     VALUES ('Produto reembolsavel', 22, 9, 2, '[]')`
+  );
+  await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [user.id, product.lastID]);
+  const { order } = await Order.createPendingFromCart(user.id);
+  await Order.setPreference(order.id, 'PREF-REFUND');
+  const payment = {
+    id: 555001,
+    external_reference: String(order.id),
+    preference_id: 'PREF-REFUND',
+    metadata: { checkout_nonce: order.checkout_nonce },
+    currency_id: 'BRL',
+    transaction_amount: 22,
+    live_mode: false
+  };
+
+  await atualizarPedidoComPagamento({ payment: { ...payment, status: 'approved' } });
+  const refunded = await atualizarPedidoComPagamento({ payment: { ...payment, status: 'refunded' } });
+  await atualizarPedidoComPagamento({ payment: { ...payment, status: 'refunded' } });
+
+  assert.equal(refunded.status, 'reembolsado');
+  assert.equal(refunded.payment_status, 'refunded');
+  assert.equal(refunded.stock_deducted, 0);
+  assert.equal(refunded.inventory_reserved, 0);
+  assert.equal((await db.get('SELECT stock FROM products WHERE id = ?', [product.lastID])).stock, 2);
+});
+
+test('pagamento tardio sem estoque recebe reembolso integral automatico', async () => {
+  await app.initializeApp();
+  const db = await getDb();
+  const user = await AuthService.register({
+    name: 'Cliente Reembolso Automatico',
+    email: 'reembolso-auto@teste.local',
+    password: 'senha-reembolso-auto'
+  });
+  const product = await db.run(
+    `INSERT INTO products (name, price, cost_price, stock, images)
+     VALUES ('Produto esgotado', 30, 12, 0, '[]')`
+  );
+  const order = await db.run(
+    `INSERT INTO orders (user_id, total, status, payment_status, checkout_nonce, preference_id)
+     VALUES (?, 30, 'pendente', 'pending', 'nonce-auto-refund', 'PREF-AUTO-REFUND')`,
+    [user.id]
+  );
+  await db.run(
+    `INSERT INTO order_items (order_id, product_id, quantity, unit_price, cost_price)
+     VALUES (?, ?, 1, 30, 12)`,
+    [order.lastID, product.lastID]
+  );
+
+  const originalFetch = global.fetch;
+  let refundRequest;
+  global.fetch = async (url, options) => {
+    refundRequest = { url: String(url), options };
+    return { ok: true, status: 201, json: async () => ({ status: 'approved' }) };
+  };
+  try {
+    const updated = await atualizarPedidoComPagamento({
+      payment: {
+        id: 555002,
+        status: 'approved',
+        external_reference: String(order.lastID),
+        preference_id: 'PREF-AUTO-REFUND',
+        metadata: { checkout_nonce: 'nonce-auto-refund' },
+        currency_id: 'BRL',
+        transaction_amount: 30,
+        live_mode: false
+      }
+    });
+    assert.equal(updated.status, 'reembolsado');
+    assert.equal(updated.payment_status, 'refunded');
+    assert.match(refundRequest.url, /\/v1\/payments\/555002\/refunds$/);
+    assert.equal(refundRequest.options.method, 'POST');
+    assert.equal(refundRequest.options.headers['X-Idempotency-Key'], 'papelaria-refund-555002');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('reconciliacao valida o pedido antes de aplicar pagamento de outro usuario', async () => {
+  await app.initializeApp();
+  const db = await getDb();
+  const attackerCredentials = {
+    name: 'Cliente Reconciliacao',
+    email: 'reconciliacao@teste.local',
+    password: 'senha-reconciliacao'
+  };
+  const victimCredentials = {
+    name: 'Cliente Alvo',
+    email: 'alvo-reconciliacao@teste.local',
+    password: 'senha-alvo-reconciliacao'
+  };
+  const attacker = await AuthService.register(attackerCredentials);
+  const victim = await AuthService.register(victimCredentials);
+  const product = await db.run(
+    `INSERT INTO products (name, price, cost_price, stock, images)
+     VALUES ('Produto conciliado', 40, 15, 2, '[]')`
+  );
+  for (const userId of [attacker.id, victim.id]) {
+    await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [userId, product.lastID]);
+  }
+  const attackerOrder = (await Order.createPendingFromCart(attacker.id)).order;
+  const victimOrder = (await Order.createPendingFromCart(victim.id)).order;
+  await Order.setPreference(attackerOrder.id, 'PREF-ATTACKER');
+  await Order.setPreference(victimOrder.id, 'PREF-VICTIM');
+
+  const server = await new Promise((resolve) => {
+    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+  });
+  const originalFetch = global.fetch;
+  try {
+    const baseUrl = `http://127.0.0.1:${server.address().port}/api`;
+    const loginResponse = await originalFetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: attackerCredentials.email, password: attackerCredentials.password })
+    });
+    const cookie = loginResponse.headers.get('set-cookie').split(';')[0];
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 555003,
+        status: 'approved',
+        external_reference: String(victimOrder.id),
+        preference_id: 'PREF-VICTIM',
+        metadata: { checkout_nonce: victimOrder.checkout_nonce },
+        currency_id: 'BRL',
+        transaction_amount: 40,
+        live_mode: false
+      })
+    });
+
+    const response = await originalFetch(`${baseUrl}/pagamento/pedidos/${attackerOrder.id}/reconciliar`, {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_id: '555003' })
+    });
+    assert.equal(response.status, 400);
+    const unchangedVictimOrder = await Order.findById(victimOrder.id);
+    assert.equal(unchangedVictimOrder.payment_status, 'pending');
+    assert.equal(unchangedVictimOrder.stock_deducted, 0);
+    assert.equal(unchangedVictimOrder.inventory_reserved, 1);
+  } finally {
+    global.fetch = originalFetch;
+    await new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+});
+
+test('relatorio administrativo trata nomes de usuarios apenas como texto', () => {
+  const source = fs.readFileSync(
+    path.resolve(__dirname, '..', '..', 'frontend', 'src', 'pages', 'AdminPage.jsx'),
+    'utf8'
+  );
+  assert.match(source, /cell\.textContent = String\(value \?\? ''\)/);
+  assert.doesNotMatch(source, /document\.write\([^;]*user_name/s);
+});
+
+test('reset administrativo remove avaliacoes e dependencias antes de reutilizar IDs', async () => {
+  await app.initializeApp();
+  const db = await getDb();
+  const adminCredentials = {
+    name: 'Admin Reset Seguro',
+    email: 'admin-reset@teste.local',
+    password: 'senha-admin-reset'
+  };
+  const admin = await AuthService.register(adminCredentials);
+  await db.run("UPDATE users SET role = 'admin' WHERE id = ?", [admin.id]);
+  const product = await db.run(
+    `INSERT INTO products (name, price, cost_price, stock, images)
+     VALUES ('Produto antigo', 10, 4, 1, '[]')`
+  );
+  const review = await db.run(
+    `INSERT INTO reviews (user_id, product_id, rating, comment)
+     VALUES (?, ?, 5, 'Avaliacao antiga')`,
+    [admin.id, product.lastID]
+  );
+  await db.run('INSERT INTO review_images (review_id, image_path) VALUES (?, ?)', [review.lastID, '/uploads/antiga.png']);
+  await db.run('INSERT INTO review_likes (review_id, user_id) VALUES (?, ?)', [review.lastID, admin.id]);
+  await db.run('INSERT INTO review_reports (review_id, user_id, reason) VALUES (?, ?, ?)', [review.lastID, admin.id, 'teste']);
+
+  const server = await new Promise((resolve) => {
+    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+  });
+  try {
+    const baseUrl = `http://127.0.0.1:${server.address().port}/api`;
+    const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: adminCredentials.email, password: adminCredentials.password })
+    });
+    const cookie = loginResponse.headers.get('set-cookie').split(';')[0];
+    const response = await fetch(`${baseUrl}/admin/reset-store-data`, {
+      method: 'DELETE',
+      headers: { Cookie: cookie }
+    });
+    assert.equal(response.status, 204);
+
+    for (const table of ['review_reports', 'review_likes', 'review_images', 'reviews', 'cart', 'order_items', 'orders', 'pedidos', 'products', 'categories']) {
+      const row = await db.get(`SELECT COUNT(*) AS total FROM ${table}`);
+      assert.equal(row.total, 0, `A tabela ${table} deveria estar vazia`);
+    }
+
+    const reused = await db.run(
+      `INSERT INTO products (name, price, cost_price, stock, images)
+       VALUES ('Produto novo', 12, 5, 2, '[]')`
+    );
+    assert.equal(reused.lastID, 1);
+    assert.equal((await db.get('SELECT COUNT(*) AS total FROM reviews WHERE product_id = 1')).total, 0);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
 });

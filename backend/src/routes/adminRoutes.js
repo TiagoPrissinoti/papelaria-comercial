@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const AppError = require('../utils/AppError');
-const { getDb } = require('../database/connection');
+const { getDb, withTransaction } = require('../database/connection');
 const allowBodyFields = require('../middlewares/allowBodyFields');
 
 const router = Router();
@@ -131,19 +131,24 @@ router.get('/reports/export.csv', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/reset-store-data', asyncHandler(async (_req, res) => {
-  const db = await getDb();
-  await db.exec('PRAGMA foreign_keys = OFF');
-  await db.exec(`
-    BEGIN TRANSACTION;
+  await withTransaction(async (db) => {
+    await db.exec(`
+    DELETE FROM review_reports;
+    DELETE FROM review_likes;
+    DELETE FROM review_images;
+    DELETE FROM reviews;
     DELETE FROM cart;
     DELETE FROM order_items;
     DELETE FROM orders;
+    DELETE FROM pedidos;
     DELETE FROM products;
     DELETE FROM categories;
-    DELETE FROM sqlite_sequence WHERE name IN ('cart', 'order_items', 'orders', 'products', 'categories');
-    COMMIT;
-  `);
-  await db.exec('PRAGMA foreign_keys = ON');
+    DELETE FROM sqlite_sequence WHERE name IN (
+      'review_reports', 'review_likes', 'review_images', 'reviews',
+      'cart', 'order_items', 'orders', 'pedidos', 'products', 'categories'
+    );
+    `);
+  });
   res.status(204).send();
 }));
 

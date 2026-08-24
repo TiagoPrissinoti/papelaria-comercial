@@ -9,7 +9,9 @@ const statusLabel = {
   pago: 'finalizado',
   em_andamento: 'em andamento',
   enviado: 'saiu para entrega',
-  entregue: 'entregue'
+  entregue: 'entregue',
+  cancelado: 'cancelado',
+  reembolsado: 'reembolsado'
 };
 const paymentStatusLabel = {
   pending: 'aguardando pagamento',

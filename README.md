@@ -73,11 +73,12 @@ O pagamento possui estado independente: `pending`, `approved`, `rejected`, `canc
 Ao criar o checkout, o backend:
 
 1. lê os itens e preços diretamente do banco;
-2. cria um pedido pendente com identificador seguro;
-3. envia a preferência ao Mercado Pago;
+2. reserva o estoque atomicamente e cria um pedido pendente com identificador seguro;
+3. envia ao Mercado Pago uma preferência com validade alinhada à reserva;
 4. valida assinatura, pedido, preferência, moeda e valor no retorno;
-5. baixa o estoque somente na primeira aprovação;
-6. mantém o processamento idempotente caso o webhook seja repetido.
+5. confirma a baixa somente na primeira aprovação e libera a reserva em falha ou cancelamento;
+6. devolve o estoque em reembolsos e solicita reembolso integral automático se um pagamento tardio não puder ser atendido;
+7. mantém reservas, pagamentos e reembolsos idempotentes caso as notificações sejam repetidas.
 
 O custo do produto é congelado em `order_items.cost_price`. Assim, o lucro histórico continua correto mesmo que o custo atual seja alterado.
 

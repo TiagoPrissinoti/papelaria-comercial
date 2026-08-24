@@ -1,9 +1,39 @@
 const { getDb, withTransaction } = require('../database/connection');
 const { randomUUID } = require('crypto');
 
+const RESERVATION_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
+
 class Order {
+  static async releaseReservation(db, order, reason) {
+    if (!order?.inventory_reserved) return;
+    const items = await db.all('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [order.id]);
+    for (const item of items) {
+      await db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+    }
+    await db.run(
+      `UPDATE orders
+       SET inventory_reserved = 0, reservation_expires_at = NULL, payment_status = 'cancelled',
+           status = 'cancelado', fulfillment_error = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [reason, order.id]
+    );
+  }
+
+  static async releaseExpiredReservations(db) {
+    const expired = await db.all(
+      `SELECT * FROM orders
+       WHERE inventory_reserved = 1 AND payment_status = 'pending'
+         AND reservation_expires_at IS NOT NULL AND reservation_expires_at <= ?`,
+      [new Date().toISOString()]
+    );
+    for (const order of expired) {
+      await this.releaseReservation(db, order, 'Reserva de estoque expirada antes do pagamento');
+    }
+  }
+
   static async createPendingFromCart(userId) {
     const result = await withTransaction(async (db) => {
+      await this.releaseExpiredReservations(db);
       const items = await db.all(
         `SELECT c.product_id, c.quantity, p.name, p.description, p.price, p.cost_price, p.stock, p.is_active
          FROM cart c
@@ -33,10 +63,29 @@ class Order {
 
       const total = items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
       const checkoutNonce = randomUUID();
+      const reservationExpiresAt = new Date(Date.now() + RESERVATION_DURATION_MS).toISOString();
+
+      for (const item of items) {
+        const reserved = await db.run(
+          `UPDATE products
+           SET stock = stock - ?
+           WHERE id = ? AND is_active = 1 AND stock >= ?`,
+          [item.quantity, item.product_id, item.quantity]
+        );
+        if (reserved.changes !== 1) {
+          const error = new Error(`Estoque insuficiente para ${item.name}`);
+          error.status = 400;
+          throw error;
+        }
+      }
+
       const insertResult = await db.run(
-        `INSERT INTO orders (user_id, total, status, payment_status, checkout_nonce)
-         VALUES (?, ?, 'pendente', 'pending', ?)`,
-        [userId, total, checkoutNonce]
+        `INSERT INTO orders (
+           user_id, total, status, payment_status, checkout_nonce,
+           inventory_reserved, reservation_expires_at
+         )
+         VALUES (?, ?, 'pendente', 'pending', ?, 1, ?)`,
+        [userId, total, checkoutNonce, reservationExpiresAt]
       );
 
       for (const item of items) {
@@ -112,13 +161,15 @@ class Order {
   }
 
   static async markPreferenceFailure(orderId, message) {
-    const db = await getDb();
-    await db.run(
-      `UPDATE orders
-       SET payment_status = 'cancelled', fulfillment_error = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND payment_status = 'pending'`,
-      [String(message || 'Falha ao criar preferencia de pagamento').slice(0, 500), orderId]
-    );
+    await withTransaction(async (db) => {
+      const order = await db.get('SELECT * FROM orders WHERE id = ?', [orderId]);
+      if (!order || order.payment_status !== 'pending') return;
+      await this.releaseReservation(
+        db,
+        order,
+        String(message || 'Falha ao criar preferencia de pagamento').slice(0, 500)
+      );
+    });
   }
 
   static async applyPayment(orderId, payment) {
@@ -143,6 +194,7 @@ class Order {
       }
 
       let stockDeducted = order.stock_deducted;
+      let inventoryReserved = order.inventory_reserved;
       let fulfillmentError = order.fulfillment_error;
 
       if (paymentStatus === 'approved' && !stockDeducted) {
@@ -153,27 +205,60 @@ class Order {
            WHERE oi.order_id = ?`,
           [orderId]
         );
-        const unavailable = items.find((item) => item.quantity > item.stock);
-
-        if (unavailable) {
-          fulfillmentError = `Pagamento aprovado, mas estoque insuficiente para ${unavailable.name}`;
-        } else {
-          for (const item of items) {
-            await db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.product_id]);
-          }
-          await db.run('DELETE FROM cart WHERE user_id = ?', [order.user_id]);
+        if (inventoryReserved) {
+          inventoryReserved = 0;
           stockDeducted = 1;
           fulfillmentError = null;
+          await db.run('DELETE FROM cart WHERE user_id = ?', [order.user_id]);
+        } else {
+          const unavailable = items.find((item) => item.quantity > item.stock);
+          if (unavailable) {
+            fulfillmentError = `Pagamento aprovado, mas estoque insuficiente para ${unavailable.name}`;
+          } else {
+            for (const item of items) {
+              await db.run('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.product_id]);
+            }
+            await db.run('DELETE FROM cart WHERE user_id = ?', [order.user_id]);
+            stockDeducted = 1;
+            fulfillmentError = null;
+          }
         }
       }
 
-      const operationalStatus = paymentStatus === 'approved' ? 'pago' : order.status;
+      if (['rejected', 'cancelled', 'refunded'].includes(paymentStatus) && inventoryReserved) {
+        const reservedItems = await db.all('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [orderId]);
+        for (const item of reservedItems) {
+          await db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+        }
+        inventoryReserved = 0;
+      }
+
+      if (paymentStatus === 'refunded' && stockDeducted) {
+        const fulfilledItems = await db.all('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [orderId]);
+        for (const item of fulfilledItems) {
+          await db.run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+        }
+        stockDeducted = 0;
+      }
+
+      const operationalStatus = paymentStatus === 'approved'
+        ? 'pago'
+        : paymentStatus === 'refunded'
+          ? 'reembolsado'
+          : ['rejected', 'cancelled'].includes(paymentStatus)
+            ? 'cancelado'
+            : order.status;
       const paidAt = paymentStatus === 'approved' ? (order.paid_at || new Date().toISOString()) : order.paid_at;
+      if (paymentStatus === 'refunded') {
+        fulfillmentError = fulfillmentError || 'Pagamento reembolsado e estoque devolvido automaticamente';
+      }
+      const reservationExpiresAt = inventoryReserved ? order.reservation_expires_at : null;
 
       await db.run(
         `UPDATE orders
          SET status = ?, payment_status = ?, payment_id = ?, payment_amount = ?, payment_currency = ?,
-             payment_live_mode = ?, stock_deducted = ?, fulfillment_error = ?, paid_at = ?,
+             payment_live_mode = ?, inventory_reserved = ?, reservation_expires_at = ?,
+             stock_deducted = ?, fulfillment_error = ?, paid_at = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
         [
@@ -183,6 +268,8 @@ class Order {
           payment.amount,
           payment.currency,
           payment.liveMode ? 1 : 0,
+          inventoryReserved,
+          reservationExpiresAt,
           stockDeducted,
           fulfillmentError,
           paidAt,
@@ -210,3 +297,4 @@ class Order {
 }
 
 module.exports = Order;
+module.exports.RESERVATION_DURATION_MS = RESERVATION_DURATION_MS;
