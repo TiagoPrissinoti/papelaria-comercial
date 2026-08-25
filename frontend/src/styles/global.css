@@ -2233,3 +2233,81 @@ textarea {
   .order-card { padding: .85rem; }.order-head { flex-direction: column; }.order-status-badge { align-self: flex-start; }
   .admin-kpis { grid-template-columns: 1fr; }.admin-nav-actions > .btn { flex: 1; }.admin-user-pill { order: -1; width: 100%; margin: 0; }.cart-row { grid-template-columns: 1fr; }.cart-row > *:first-child { grid-column: auto; }.admin-inline-form, .admin-category-row { grid-template-columns: 1fr; }.pagination { flex-wrap: wrap; }.pagination span { order: -1; width: 100%; text-align: center; }
 }
+
+/* Institutional pages: keep responsive overrides after the final theme layer. */
+@media (max-width: 900px) {
+  .info-page { width: 100%; gap: 1rem; }
+  .info-layout { grid-template-columns: minmax(0, 1fr); }
+  .info-index { position: static; top: auto; }
+  .info-index ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .info-contact-card { align-items: stretch; flex-direction: column; }
+  .info-contact-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .info-page { gap: .8rem; }
+  .info-breadcrumb {
+    min-width: 0;
+    overflow: hidden;
+    font-size: .75rem;
+    white-space: nowrap;
+  }
+  .info-breadcrumb span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .info-hero {
+    border-radius: var(--radius-lg);
+    padding: 1.5rem 1.1rem;
+  }
+  .info-hero::after {
+    width: 150px;
+    height: 150px;
+    right: -72px;
+    top: -78px;
+    border-width: 24px;
+  }
+  .info-eyebrow { font-size: .68rem; letter-spacing: .1em; }
+  .info-hero h1 { max-width: 90%; font-size: clamp(1.8rem, 9vw, 2.45rem); line-height: 1.12; }
+  .info-intro { margin: .7rem 0 .9rem; font-size: .95rem; line-height: 1.55; }
+  .info-note {
+    max-width: 100%;
+    border-radius: 10px;
+    font-size: .72rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .info-index { border-radius: var(--radius-sm); padding: .85rem; }
+  .info-index ol { grid-template-columns: minmax(0, 1fr); gap: .15rem; margin-top: .55rem; }
+  .info-index li { grid-template-columns: 1.7rem minmax(0, 1fr); align-items: center; }
+  .info-index li::before { padding-top: 0; }
+  .info-index a {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    font-size: .82rem;
+    overflow-wrap: anywhere;
+  }
+  .info-content { gap: .6rem; }
+  .info-content > section {
+    scroll-margin-top: 76px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: .65rem;
+    border-radius: var(--radius-sm);
+    padding: .9rem .8rem;
+  }
+  .info-section-number { width: 32px; height: 32px; border-radius: 8px; font-size: .7rem; }
+  .info-content h2 { margin-bottom: .45rem; font-size: 1rem; line-height: 1.35; overflow-wrap: anywhere; }
+  .info-content p { font-size: .94rem; line-height: 1.65; overflow-wrap: anywhere; }
+  .info-content ul { padding-left: 1rem; font-size: .94rem; }
+  .info-contact-card { gap: .9rem; border-radius: var(--radius-md); padding: 1rem; }
+  .info-contact-card h2 { font-size: 1.15rem; }
+  .info-contact-actions { grid-template-columns: minmax(0, 1fr); }
+  .info-contact-actions .btn { width: 100%; min-height: 44px; }
+}
+
+@media (max-width: 360px) {
+  .info-content > section { grid-template-columns: minmax(0, 1fr); }
+  .info-section-number { margin-bottom: .1rem; }
+  .info-hero h1 { max-width: 100%; }
+}
