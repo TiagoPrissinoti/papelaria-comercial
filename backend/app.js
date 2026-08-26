@@ -124,6 +124,7 @@ async function initializeApp() {
     ['stock_deducted', 'ALTER TABLE orders ADD COLUMN stock_deducted INTEGER NOT NULL DEFAULT 0'],
     ['fulfillment_error', 'ALTER TABLE orders ADD COLUMN fulfillment_error TEXT'],
     ['paid_at', 'ALTER TABLE orders ADD COLUMN paid_at DATETIME'],
+    ['shipping_address_json', 'ALTER TABLE orders ADD COLUMN shipping_address_json TEXT'],
     ['updated_at', 'ALTER TABLE orders ADD COLUMN updated_at DATETIME']
   ];
   for (const [column, sql] of orderMigrations) {
@@ -164,6 +165,7 @@ async function initializeApp() {
         fulfillment_error TEXT,
         paid_at DATETIME,
         hidden_by_user INTEGER NOT NULL DEFAULT 0 CHECK(hidden_by_user IN (0, 1)),
+        shipping_address_json TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -171,12 +173,12 @@ async function initializeApp() {
       INSERT INTO orders (
         id, user_id, total, status, payment_status, payment_id, preference_id, checkout_nonce,
         payment_amount, payment_currency, payment_live_mode, inventory_reserved, reservation_expires_at,
-        stock_deducted, fulfillment_error, paid_at, hidden_by_user, created_at, updated_at
+        stock_deducted, fulfillment_error, paid_at, hidden_by_user, shipping_address_json, created_at, updated_at
       )
       SELECT
         id, user_id, total, status, payment_status, payment_id, preference_id, checkout_nonce,
         payment_amount, payment_currency, payment_live_mode, inventory_reserved, reservation_expires_at,
-        stock_deducted, fulfillment_error, paid_at, hidden_by_user, created_at, updated_at
+        stock_deducted, fulfillment_error, paid_at, hidden_by_user, shipping_address_json, created_at, updated_at
       FROM orders_old;
       DROP TABLE orders_old;
       COMMIT;

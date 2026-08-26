@@ -31,9 +31,32 @@ class Order {
     }
   }
 
-  static async createPendingFromCart(userId) {
+  static async createPendingFromCart(userId, addressId) {
     const result = await withTransaction(async (db) => {
       await this.releaseExpiredReservations(db);
+      if (!Number.isInteger(addressId) || addressId < 1) {
+        const error = new Error('Selecione um endereco de entrega');
+        error.status = 400;
+        throw error;
+      }
+      const address = await db.get('SELECT * FROM addresses WHERE id = ? AND user_id = ?', [addressId, userId]);
+      if (!address) {
+        const error = new Error('Endereco de entrega nao encontrado');
+        error.status = 400;
+        throw error;
+      }
+      const shippingAddress = {
+        label: address.label,
+        recipient_name: address.recipient_name,
+        phone: address.phone,
+        postal_code: address.postal_code,
+        street: address.street,
+        number: address.number,
+        complement: address.complement,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state
+      };
       const items = await db.all(
         `SELECT c.product_id, c.quantity, p.name, p.description, p.price, p.cost_price, p.stock, p.is_active
          FROM cart c
@@ -82,10 +105,10 @@ class Order {
       const insertResult = await db.run(
         `INSERT INTO orders (
            user_id, total, status, payment_status, checkout_nonce,
-           inventory_reserved, reservation_expires_at
+           inventory_reserved, reservation_expires_at, shipping_address_json
          )
-         VALUES (?, ?, 'pendente', 'pending', ?, 1, ?)`,
-        [userId, total, checkoutNonce, reservationExpiresAt]
+         VALUES (?, ?, 'pendente', 'pending', ?, 1, ?, ?)`,
+        [userId, total, checkoutNonce, reservationExpiresAt, JSON.stringify(shippingAddress)]
       );
 
       for (const item of items) {

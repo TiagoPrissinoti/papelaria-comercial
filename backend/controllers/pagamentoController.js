@@ -25,6 +25,7 @@ exports.criar = asyncHandler(async (req, res) => {
   const { preference, order } = await criarPreferencia({
     clienteId: req.user.id,
     payerEmail: req.user.email,
+    addressId: Number(req.body.address_id),
     requestOrigin: req.headers.origin
   });
 

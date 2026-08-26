@@ -15,12 +15,21 @@ process.env.MERCADO_PAGO_ACCESS_TOKEN = 'TEST_TOKEN';
 const app = require('../app');
 const { getDb } = require('../src/database/connection');
 const Order = require('../src/models/Order');
+const Address = require('../src/models/Address');
 const AuthService = require('../src/services/AuthService');
 const {
   atualizarPedidoComPagamento,
   normalizePaymentStatus,
   toCents
 } = require('../services/mercadoPagoService');
+
+async function createTestAddress(userId) {
+  return Address.create(userId, {
+    label: 'Casa', recipient_name: 'Cliente Teste', phone: '11999999999',
+    postal_code: '01001000', street: 'Praca da Se', number: '1', complement: '',
+    neighborhood: 'Se', city: 'Sao Paulo', state: 'SP', is_default: true
+  });
+}
 
 after(async () => {
   const db = await getDb();
@@ -200,7 +209,8 @@ test('pagamento aprovado atualiza o pedido e baixa estoque apenas uma vez', asyn
     [user.lastID, product.lastID]
   );
 
-  const { order } = await Order.createPendingFromCart(user.lastID);
+  const address = await createTestAddress(user.lastID);
+  const { order } = await Order.createPendingFromCart(user.lastID, address.id);
   await Order.setPreference(order.id, 'PREF-TESTE');
 
   const payment = {
@@ -251,12 +261,46 @@ test('reserva atomica impede vender a mesma ultima unidade para dois checkouts',
   await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [first.id, product.lastID]);
   await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [second.id, product.lastID]);
 
-  const firstCheckout = await Order.createPendingFromCart(first.id);
-  await assert.rejects(() => Order.createPendingFromCart(second.id), /Estoque insuficiente/);
+  const firstAddress = await createTestAddress(first.id);
+  const secondAddress = await createTestAddress(second.id);
+  const firstCheckout = await Order.createPendingFromCart(first.id, firstAddress.id);
+  await assert.rejects(() => Order.createPendingFromCart(second.id, secondAddress.id), /Estoque insuficiente/);
 
   assert.equal(firstCheckout.order.inventory_reserved, 1);
   assert.equal(firstCheckout.order.stock_deducted, 0);
   assert.equal((await db.get('SELECT stock FROM products WHERE id = ?', [product.lastID])).stock, 0);
+});
+
+test('pedido exige endereco do proprio cliente e preserva os dados da entrega', async () => {
+  await app.initializeApp();
+  const db = await getDb();
+  const owner = await AuthService.register({
+    name: 'Cliente Endereco', email: 'cliente-endereco@teste.local', password: 'senha-endereco'
+  });
+  const other = await AuthService.register({
+    name: 'Outro Cliente', email: 'outro-endereco@teste.local', password: 'senha-outro-endereco'
+  });
+  const address = await createTestAddress(owner.id);
+  const foreignAddress = await createTestAddress(other.id);
+  const product = await db.run(
+    `INSERT INTO products (name, price, cost_price, stock, images)
+     VALUES ('Produto com entrega', 18, 7, 2, '[]')`
+  );
+  await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [owner.id, product.lastID]);
+
+  await assert.rejects(
+    () => Order.createPendingFromCart(owner.id, foreignAddress.id),
+    /Endereco de entrega nao encontrado/
+  );
+
+  const { order } = await Order.createPendingFromCart(owner.id, address.id);
+  const snapshot = JSON.parse(order.shipping_address_json);
+  assert.equal(snapshot.street, 'Praca da Se');
+  assert.equal(snapshot.id, undefined);
+
+  await db.run("UPDATE addresses SET street = 'Rua alterada' WHERE id = ?", [address.id]);
+  const persistedOrder = await Order.findById(order.id);
+  assert.equal(JSON.parse(persistedOrder.shipping_address_json).street, 'Praca da Se');
 });
 
 test('reembolso muda o status operacional e devolve o estoque uma unica vez', async () => {
@@ -272,7 +316,8 @@ test('reembolso muda o status operacional e devolve o estoque uma unica vez', as
      VALUES ('Produto reembolsavel', 22, 9, 2, '[]')`
   );
   await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [user.id, product.lastID]);
-  const { order } = await Order.createPendingFromCart(user.id);
+  const address = await createTestAddress(user.id);
+  const { order } = await Order.createPendingFromCart(user.id, address.id);
   await Order.setPreference(order.id, 'PREF-REFUND');
   const payment = {
     id: 555001,
@@ -369,8 +414,10 @@ test('reconciliacao valida o pedido antes de aplicar pagamento de outro usuario'
   for (const userId of [attacker.id, victim.id]) {
     await db.run('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)', [userId, product.lastID]);
   }
-  const attackerOrder = (await Order.createPendingFromCart(attacker.id)).order;
-  const victimOrder = (await Order.createPendingFromCart(victim.id)).order;
+  const attackerAddress = await createTestAddress(attacker.id);
+  const victimAddress = await createTestAddress(victim.id);
+  const attackerOrder = (await Order.createPendingFromCart(attacker.id, attackerAddress.id)).order;
+  const victimOrder = (await Order.createPendingFromCart(victim.id, victimAddress.id)).order;
   await Order.setPreference(attackerOrder.id, 'PREF-ATTACKER');
   await Order.setPreference(victimOrder.id, 'PREF-VICTIM');
 

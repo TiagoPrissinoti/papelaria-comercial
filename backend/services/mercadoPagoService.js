@@ -85,10 +85,10 @@ async function criarReembolsoTotal(paymentId) {
   return response.json();
 }
 
-async function criarPreferencia({ clienteId, payerEmail, requestOrigin }) {
+async function criarPreferencia({ clienteId, payerEmail, requestOrigin, addressId }) {
   if (!Preference) throw formatError('A SDK mercadopago nao esta instalada no backend.', 500);
 
-  const { order, items: cartItems } = await Order.createPendingFromCart(clienteId);
+  const { order, items: cartItems } = await Order.createPendingFromCart(clienteId, addressId);
   const backendBase = requireHttpsUrl(getBackendUrl(), 'BACKEND_URL');
   const preferenceClient = new Preference(getMercadoPagoClient());
   const preferencePayload = {

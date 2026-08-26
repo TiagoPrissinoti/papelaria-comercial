@@ -40,6 +40,29 @@ CREATE TABLE IF NOT EXISTS cart (
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS addresses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  label TEXT NOT NULL DEFAULT 'Casa',
+  recipient_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  postal_code TEXT NOT NULL,
+  street TEXT NOT NULL,
+  number TEXT NOT NULL,
+  complement TEXT,
+  neighborhood TEXT NOT NULL,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_addresses_user_id ON addresses(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_addresses_one_default_per_user
+  ON addresses(user_id) WHERE is_default = 1;
+
 CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -58,6 +81,7 @@ CREATE TABLE IF NOT EXISTS orders (
   fulfillment_error TEXT,
   paid_at DATETIME,
   hidden_by_user INTEGER NOT NULL DEFAULT 0 CHECK(hidden_by_user IN (0, 1)),
+  shipping_address_json TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

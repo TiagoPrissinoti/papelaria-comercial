@@ -8,6 +8,7 @@ const adminRoutes = require('./adminRoutes');
 const reviewRoutes = require('./reviewRoutes');
 const pagamentoRoutes = require('../../routes/pagamentoRoutes');
 const pagamentoController = require('../../controllers/pagamentoController');
+const addressRoutes = require('./addressRoutes');
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.use('/products', productRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/cart', cartRoutes);
 router.use('/orders', orderRoutes);
+router.use('/addresses', addressRoutes);
 router.use('/pagamento', pagamentoRoutes);
 router.post('/webhook', pagamentoController.webhook);
 router.use('/admin', adminRoutes);

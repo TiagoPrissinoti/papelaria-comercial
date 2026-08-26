@@ -34,6 +34,28 @@ function formatDateTime(value) {
   return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+function getShippingAddress(order) {
+  try {
+    return order?.shipping_address_json ? JSON.parse(order.shipping_address_json) : null;
+  } catch {
+    return null;
+  }
+}
+
+function ShippingAddress({ order }) {
+  const address = getShippingAddress(order);
+  if (!address) return null;
+  const cep = String(address.postal_code || '').replace(/(\d{5})(\d{3})/, '$1-$2');
+  return (
+    <div className="order-delivery-address">
+      <strong>Endereço de entrega</strong>
+      <span>{address.recipient_name}</span>
+      <span>{address.street}, {address.number}{address.complement ? `, ${address.complement}` : ''}</span>
+      <span>{address.neighborhood} · {address.city}/{address.state} · CEP {cep}</span>
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +149,7 @@ export default function OrdersPage() {
             <p><strong>Codigo de rastreio:</strong> GFL-{trackingOrder.id}</p>
             <p><strong>Status atual:</strong> {statusLabel[trackingOrder.status] || trackingOrder.status}</p>
             <p><strong>Ultima atualizacao:</strong> {formatDateTime(trackingOrder.created_at)}</p>
+            <ShippingAddress order={trackingOrder} />
             <div className="order-flow compact">
               {flowSteps.map((step, stepIndex) => {
                 const currentIndex = flowSteps.findIndex((item) => item.key === trackingOrder.status);
@@ -155,6 +178,7 @@ export default function OrdersPage() {
             <p><strong>Status:</strong> {statusLabel[manageOrder.status] || manageOrder.status}</p>
             <p><strong>Total:</strong> R$ {Number(manageOrder.total).toFixed(2)}</p>
             <p><strong>Data:</strong> {formatDateTime(manageOrder.created_at)}</p>
+            <ShippingAddress order={manageOrder} />
             <ul className="order-manage-list">
               <li>Para ajustes ou cancelamento, entre em contato com o suporte informando o numero do pedido.</li>
               <li>Assim que o pedido for preparado, o status muda para "em andamento".</li>
