@@ -137,6 +137,69 @@ test('rotas rejeitam campos fora da allowlist contra mass assignment', async () 
   }
 });
 
+test('somente administrador pode editar produto', async () => {
+  await app.initializeApp();
+  const db = await getDb();
+  const adminCredentials = {
+    name: 'Admin Editor',
+    email: 'admin-editor@teste.local',
+    password: 'senha-admin-editor'
+  };
+  const clientCredentials = {
+    name: 'Cliente Sem Edicao',
+    email: 'cliente-sem-edicao@teste.local',
+    password: 'senha-cliente-editor'
+  };
+  const admin = await AuthService.register(adminCredentials);
+  await AuthService.register(clientCredentials);
+  await db.run("UPDATE users SET role = 'admin' WHERE id = ?", [admin.id]);
+  const product = await db.run(
+    `INSERT INTO products (name, description, price, cost_price, stock, images)
+     VALUES ('Produto Original', 'Descricao original', 10, 5, 2, '[]')`
+  );
+  const server = await new Promise((resolve) => {
+    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+  });
+
+  try {
+    const baseUrl = `http://127.0.0.1:${server.address().port}/api`;
+    async function login(credentials) {
+      const response = await fetch(`${baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: credentials.email, password: credentials.password })
+      });
+      assert.equal(response.status, 200);
+      return response.headers.get('set-cookie').split(';')[0];
+    }
+
+    const clientCookie = await login(clientCredentials);
+    const forbiddenResponse = await fetch(`${baseUrl}/products/${product.lastID}`, {
+      method: 'PUT',
+      headers: { Cookie: clientCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Alteracao Indevida' })
+    });
+    assert.equal(forbiddenResponse.status, 403);
+    assert.equal((await db.get('SELECT name FROM products WHERE id = ?', [product.lastID])).name, 'Produto Original');
+
+    const adminCookie = await login(adminCredentials);
+    const updatedResponse = await fetch(`${baseUrl}/products/${product.lastID}`, {
+      method: 'PUT',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Produto Editado', price: 12.5, stock: 4 })
+    });
+    assert.equal(updatedResponse.status, 200);
+    const updated = await updatedResponse.json();
+    assert.equal(updated.name, 'Produto Editado');
+    assert.equal(updated.price, 12.5);
+    assert.equal(updated.stock, 4);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+});
+
 test('sessao usa cookie HttpOnly e recarrega permissoes no servidor', async () => {
   await app.initializeApp();
   const credentials = {

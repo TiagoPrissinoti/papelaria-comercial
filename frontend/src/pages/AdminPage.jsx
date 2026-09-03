@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { getUploadsBaseUrl } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 
 const initialForm = { name: '', description: '', price: '', costPrice: '', stock: '', categoryId: '', image: null, images: [] };
 const imageAccept = '.jpg,.jpeg,.png,.webp,.gif,.avif,.bmp';
+const uploadsBaseUrl = getUploadsBaseUrl();
 const pageSize = 6;
 const statusLabel = {
   pendente: 'pendente',
@@ -38,6 +39,8 @@ export default function AdminPage() {
   });
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [preview, setPreview] = useState([]);
   const [form, setForm] = useState(initialForm);
 
@@ -97,8 +100,50 @@ export default function AdminPage() {
   const pagedUsers = useMemo(() => filteredUsers.slice((userPage - 1) * pageSize, userPage * pageSize), [filteredUsers, userPage]);
   const userPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
 
-  async function createProduct(event) {
+  function clearPreview() {
+    for (const src of preview) URL.revokeObjectURL(src);
+    setPreview([]);
+  }
+
+  function openCreateProduct() {
+    clearPreview();
+    setEditingProduct(null);
+    setForm(initialForm);
+    setModalOpen(true);
+  }
+
+  function openEditProduct(product) {
+    clearPreview();
+    setEditingProduct(product);
+    setForm({
+      name: product.name || '',
+      description: product.description || '',
+      price: String(product.price ?? ''),
+      costPrice: String(product.cost_price ?? ''),
+      stock: String(product.stock ?? ''),
+      categoryId: String(product.category_id ?? ''),
+      image: null,
+      images: []
+    });
+    setModalOpen(true);
+  }
+
+  function closeProductModal() {
+    clearPreview();
+    setModalOpen(false);
+    setEditingProduct(null);
+    setForm(initialForm);
+  }
+
+  function productImageUrl(path) {
+    if (!path) return '';
+    return /^https?:\/\//i.test(path) ? path : `${uploadsBaseUrl}${path}`;
+  }
+
+  async function saveProduct(event) {
     event.preventDefault();
+    if (savingProduct) return;
+
     const data = new FormData();
     data.append('name', form.name);
     data.append('description', form.description);
@@ -108,12 +153,22 @@ export default function AdminPage() {
     data.append('categoryId', form.categoryId);
     if (form.image) data.append('image', form.image);
     for (const file of form.images) data.append('images', file);
-    await api.post('/products', data, { headers: { 'Content-Type': 'multipart/form-data' } });
-    setModalOpen(false);
-    setPreview([]);
-    setForm(initialForm);
-    notify('success', 'Produto criado com sucesso.');
-    await loadData();
+    setSavingProduct(true);
+    try {
+      if (editingProduct) {
+        await api.put(`/products/${editingProduct.id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } else {
+        await api.post('/products', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      }
+      const message = editingProduct ? 'Produto atualizado com sucesso.' : 'Produto criado com sucesso.';
+      closeProductModal();
+      notify('success', message);
+      await loadData();
+    } catch (error) {
+      notify('error', error.response?.data?.message || 'Nao foi possivel salvar o produto.');
+    } finally {
+      setSavingProduct(false);
+    }
   }
 
   async function deleteProduct(id) {
@@ -338,7 +393,7 @@ export default function AdminPage() {
               <section className="admin-panel-block">
                 <div className="section-head section-head-action">
                   <h2>Gerenciamento de produtos</h2>
-                  <Button onClick={() => setModalOpen(true)}>Novo produto</Button>
+                  <Button onClick={openCreateProduct}>Novo produto</Button>
                 </div>
                 <form className="admin-inline-form" onSubmit={createCategory}>
                   <Input
@@ -369,13 +424,16 @@ export default function AdminPage() {
                   ))}
                 </div>
                 {products.map((product) => (
-                  <div key={product.id} className="cart-row">
+                  <div key={product.id} className="cart-row admin-product-row">
                     <span>{product.name}</span>
                     <span>R$ {Number(product.price).toFixed(2)}</span>
                     <span>Custo: R$ {Number(product.cost_price || 0).toFixed(2)}</span>
                     <span>Estoque: {product.stock}</span>
                     <span>{product.category_name || 'Sem categoria'}</span>
-                    <Button variant="secondary" onClick={() => deleteProduct(product.id)}>Excluir</Button>
+                    <div className="admin-product-actions">
+                      <Button variant="secondary" onClick={() => openEditProduct(product)}>Editar</Button>
+                      <Button variant="secondary" onClick={() => deleteProduct(product.id)}>Excluir</Button>
+                    </div>
                   </div>
                 ))}
               </section>
@@ -449,8 +507,8 @@ export default function AdminPage() {
         )}
       </div>
 
-      <Modal title="Novo produto" open={modalOpen} onClose={() => setModalOpen(false)}>
-        <form className="admin-form" onSubmit={createProduct}>
+      <Modal title={editingProduct ? 'Editar produto' : 'Novo produto'} open={modalOpen} onClose={closeProductModal}>
+        <form className="admin-form" onSubmit={saveProduct}>
           <label>Nome<Input placeholder="Nome do produto" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>
           <label>Descrição<Input placeholder="Descrição curta e objetiva" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required /></label>
           <label>Preço de venda<Input placeholder="0,00" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required /></label>
@@ -460,16 +518,23 @@ export default function AdminPage() {
             <option value="">Selecione a categoria</option>
             {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
           </select></label>
-          <label>Imagem principal</label>
+          <label>Imagem principal {editingProduct && '(opcional — mantenha vazio para preservar a atual)'}</label>
           <Input type="file" accept={imageAccept} onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })} />
-          <label>Galeria</label>
+          <label>Galeria {editingProduct && '(opcional — novos arquivos substituem a galeria atual)'}</label>
           <Input type="file" multiple accept={imageAccept} onChange={(e) => {
             const files = Array.from(e.target.files || []);
             setForm({ ...form, images: files });
+            clearPreview();
             setPreview(files.map((file) => URL.createObjectURL(file)));
           }} />
+          {editingProduct && !preview.length && (editingProduct.image || editingProduct.images?.length > 0) && (
+            <div className="thumbs" aria-label="Imagens atuais do produto">
+              {editingProduct.image && <img src={productImageUrl(editingProduct.image)} alt="Imagem principal atual" />}
+              {(editingProduct.images || []).map((src) => <img key={src} src={productImageUrl(src)} alt="Imagem atual da galeria" />)}
+            </div>
+          )}
           <div className="thumbs">{preview.map((src) => <img key={src} src={src} alt="preview" />)}</div>
-          <Button type="submit">Salvar produto</Button>
+          <Button type="submit" disabled={savingProduct}>{savingProduct ? 'Salvando...' : 'Salvar produto'}</Button>
         </form>
       </Modal>
 
