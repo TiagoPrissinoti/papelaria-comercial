@@ -48,6 +48,9 @@ export default function ProductPage() {
   const { upsertItem } = useCart();
 
   const [product, setProduct] = useState(null);
+  const [selectedColor, setSelectedColor] = useState('');
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartMessage, setCartMessage] = useState('');
 
   const [activeImage, setActiveImage] =
     useState('');
@@ -130,6 +133,8 @@ export default function ProductPage() {
         );
 
         setProduct(res.data);
+        setSelectedColor(res.data.colors?.length === 1 ? res.data.colors[0] : '');
+        setCartMessage('');
 
         setActiveImage(res.data.image || '');
       } catch (error) {
@@ -246,6 +251,28 @@ export default function ProductPage() {
       setReviewPage(1);
     } catch (error) {
       console.error(error);
+    }
+  }
+
+  async function addProductToCart() {
+    if (!isAuthenticated) {
+      setCartMessage('Faça login para adicionar o produto ao carrinho.');
+      return;
+    }
+    if (product.colors?.length && !selectedColor) {
+      setCartMessage('Escolha uma cor antes de adicionar ao carrinho.');
+      return;
+    }
+
+    setAddingToCart(true);
+    setCartMessage('');
+    try {
+      await upsertItem(product.id, 1, selectedColor);
+      setCartMessage(`Produto adicionado ao carrinho${selectedColor ? ` na cor ${selectedColor}` : ''}.`);
+    } catch (error) {
+      setCartMessage(error.response?.data?.message || 'Não foi possível adicionar o produto ao carrinho.');
+    } finally {
+      setAddingToCart(false);
     }
   }
 
@@ -429,18 +456,39 @@ export default function ProductPage() {
             <span aria-hidden="true">{Number(product.stock) > 0 ? '✓' : '×'}</span>
             {Number(product.stock) > 0 ? `${product.stock} unidade(s) em estoque` : 'Produto indisponível'}
           </div>
+          {product.colors?.length > 0 && (
+            <fieldset className="product-color-picker">
+              <legend>Escolha a cor <span aria-hidden="true">*</span></legend>
+              <div className="product-color-options">
+                {product.colors.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`product-color-option ${selectedColor === color ? 'selected' : ''}`}
+                    aria-pressed={selectedColor === color}
+                    onClick={() => {
+                      setSelectedColor(color);
+                      setCartMessage('');
+                    }}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <div className="product-short-description">
             <h2>Sobre este produto</h2>
             <p>{product.description || 'Produto selecionado para acompanhar sua rotina com qualidade e praticidade.'}</p>
           </div>
           <button
             className="btn btn-primary product-add-button"
-            onClick={() =>
-              upsertItem(product.id, 1)
-            }
+            onClick={addProductToCart}
+            disabled={addingToCart || Number(product.stock) <= 0}
           >
-            Adicionar ao carrinho
+            {addingToCart ? 'Adicionando...' : 'Adicionar ao carrinho'}
           </button>
+          {cartMessage && <p className="product-cart-message" role="status">{cartMessage}</p>}
           <div className="product-assurances">
             <div><span aria-hidden="true">✓</span><p><strong>Compra protegida</strong><small>Ambiente seguro</small></p></div>
             <div><span aria-hidden="true">↗</span><p><strong>Pedido acompanhado</strong><small>Veja cada etapa</small></p></div>

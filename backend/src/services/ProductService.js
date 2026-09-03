@@ -7,6 +7,26 @@ function extractImagePaths(files) {
   return { main, gallery };
 }
 
+function normalizeColors(value) {
+  if (value === undefined) return undefined;
+  let colors = value;
+  if (typeof value === 'string') {
+    try {
+      colors = JSON.parse(value);
+    } catch {
+      throw new AppError('Lista de cores invalida', 400);
+    }
+  }
+  if (!Array.isArray(colors)) throw new AppError('Lista de cores invalida', 400);
+  const normalized = colors.map((color) => String(color).trim()).filter(Boolean);
+  if (normalized.length > 20 || normalized.some((color) => color.length > 40)) {
+    throw new AppError('Informe no maximo 20 cores, com ate 40 caracteres cada', 400);
+  }
+  return normalized.filter((color, index) => (
+    normalized.findIndex((item) => item.toLocaleLowerCase('pt-BR') === color.toLocaleLowerCase('pt-BR')) === index
+  ));
+}
+
 class ProductService {
   static async list() {
     return Product.findAll();
@@ -28,7 +48,8 @@ class ProductService {
       costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : 0,
       stock: Number(payload.stock),
       image: main,
-      images: gallery
+      images: gallery,
+      colors: normalizeColors(payload.colors) || []
     });
   }
 
@@ -46,7 +67,8 @@ class ProductService {
       costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : undefined,
       stock: payload.stock !== undefined ? Number(payload.stock) : undefined,
       image: main || current.image,
-      images: gallery.length ? gallery : current.images
+      images: gallery.length ? gallery : current.images,
+      colors: normalizeColors(payload.colors)
     });
 
     return product;

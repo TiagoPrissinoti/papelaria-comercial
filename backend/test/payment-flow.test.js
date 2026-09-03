@@ -17,6 +17,8 @@ const { getDb } = require('../src/database/connection');
 const Order = require('../src/models/Order');
 const Address = require('../src/models/Address');
 const AuthService = require('../src/services/AuthService');
+const ProductService = require('../src/services/ProductService');
+const CartService = require('../src/services/CartService');
 const {
   atualizarPedidoComPagamento,
   normalizePaymentStatus,
@@ -198,6 +200,43 @@ test('somente administrador pode editar produto', async () => {
       server.close((error) => (error ? reject(error) : resolve()));
     });
   }
+});
+
+test('cores do produto sao validadas, separadas no carrinho e registradas no pedido', async () => {
+  await app.initializeApp();
+  const customer = await AuthService.register({
+    name: 'Cliente Cores',
+    email: 'cliente-cores@teste.local',
+    password: 'senha-cliente-cores'
+  });
+  const product = await ProductService.create({
+    name: 'Lapiseira 0.7mm',
+    description: 'Lapiseira com cores',
+    price: 15,
+    costPrice: 8,
+    stock: 10,
+    colors: JSON.stringify(['Azul', 'azul', ' Rosa '])
+  });
+  assert.deepEqual(product.colors, ['Azul', 'Rosa']);
+
+  await assert.rejects(
+    CartService.addOrUpdateItem(customer.id, product.id, 1),
+    /Selecione uma cor valida/
+  );
+  await assert.rejects(
+    CartService.addOrUpdateItem(customer.id, product.id, 1, 'Verde'),
+    /Selecione uma cor valida/
+  );
+
+  await CartService.addOrUpdateItem(customer.id, product.id, 1, 'azul');
+  const cart = await CartService.addOrUpdateItem(customer.id, product.id, 1, 'Rosa');
+  assert.equal(cart.items.length, 2);
+  assert.deepEqual(cart.items.map((item) => item.selected_color).sort(), ['Azul', 'Rosa']);
+
+  const address = await createTestAddress(customer.id);
+  const { order } = await Order.createPendingFromCart(customer.id, address.id);
+  const orderItems = await Order.findItems(order.id);
+  assert.deepEqual(orderItems.map((item) => item.selected_color).sort(), ['Azul', 'Rosa']);
 });
 
 test('sessao usa cookie HttpOnly e recarrega permissoes no servidor', async () => {

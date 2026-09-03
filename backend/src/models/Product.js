@@ -14,18 +14,19 @@ function normalizeProduct(product) {
   if (!product) return null;
   return {
     ...product,
-    images: parseImages(product.images)
+    images: parseImages(product.images),
+    colors: parseImages(product.colors)
   };
 }
 
 class Product {
   static async create(data) {
     const db = await getDb();
-    const { name, description, price, costPrice = 0, stock, categoryId, image, images = [] } = data;
+    const { name, description, price, costPrice = 0, stock, categoryId, image, images = [], colors = [] } = data;
     const result = await db.run(
-      `INSERT INTO products (name, description, price, cost_price, stock, category_id, image, images)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, description, price, costPrice, stock, categoryId || null, image || null, JSON.stringify(images)]
+      `INSERT INTO products (name, description, price, cost_price, stock, category_id, image, images, colors)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, description, price, costPrice, stock, categoryId || null, image || null, JSON.stringify(images), JSON.stringify(colors)]
     );
     return this.findById(result.lastID);
   }
@@ -70,12 +71,13 @@ class Product {
       stock: data.stock ?? current.stock,
       category_id: data.categoryId ?? current.category_id,
       image: data.image ?? current.image,
-      images: data.images ?? current.images
+      images: data.images ?? current.images,
+      colors: data.colors ?? current.colors
     };
 
     await db.run(
       `UPDATE products
-       SET name = ?, description = ?, price = ?, cost_price = ?, stock = ?, category_id = ?, image = ?, images = ?
+       SET name = ?, description = ?, price = ?, cost_price = ?, stock = ?, category_id = ?, image = ?, images = ?, colors = ?
        WHERE id = ?`,
       [
         updated.name,
@@ -86,6 +88,7 @@ class Product {
         updated.category_id,
         updated.image,
         JSON.stringify(updated.images),
+        JSON.stringify(updated.colors),
         id
       ]
     );

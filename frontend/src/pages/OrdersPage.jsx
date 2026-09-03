@@ -131,6 +131,7 @@ export default function OrdersPage() {
                 />
                 <div>
                   <strong>{item.name}</strong>
+                  {item.selected_color && <p><strong>Cor:</strong> {item.selected_color}</p>}
                   <p>{item.quantity}x - R$ {Number(item.unit_price).toFixed(2)}</p>
                 </div>
               </div>

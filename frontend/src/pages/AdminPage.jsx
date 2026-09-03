@@ -6,7 +6,7 @@ import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
-const initialForm = { name: '', description: '', price: '', costPrice: '', stock: '', categoryId: '', image: null, images: [] };
+const initialForm = { name: '', description: '', price: '', costPrice: '', stock: '', categoryId: '', colors: '', image: null, images: [] };
 const imageAccept = '.jpg,.jpeg,.png,.webp,.gif,.avif,.bmp';
 const uploadsBaseUrl = getUploadsBaseUrl();
 const pageSize = 6;
@@ -122,6 +122,7 @@ export default function AdminPage() {
       costPrice: String(product.cost_price ?? ''),
       stock: String(product.stock ?? ''),
       categoryId: String(product.category_id ?? ''),
+      colors: (product.colors || []).join(', '),
       image: null,
       images: []
     });
@@ -151,6 +152,7 @@ export default function AdminPage() {
     data.append('costPrice', form.costPrice || 0);
     data.append('stock', form.stock);
     data.append('categoryId', form.categoryId);
+    data.append('colors', JSON.stringify(form.colors.split(',').map((color) => color.trim()).filter(Boolean)));
     if (form.image) data.append('image', form.image);
     for (const file of form.images) data.append('images', file);
     setSavingProduct(true);
@@ -429,7 +431,7 @@ export default function AdminPage() {
                     <span>R$ {Number(product.price).toFixed(2)}</span>
                     <span>Custo: R$ {Number(product.cost_price || 0).toFixed(2)}</span>
                     <span>Estoque: {product.stock}</span>
-                    <span>{product.category_name || 'Sem categoria'}</span>
+                    <span>{product.category_name || 'Sem categoria'}{product.colors?.length > 0 && <><br /><small>Cores: {product.colors.join(', ')}</small></>}</span>
                     <div className="admin-product-actions">
                       <Button variant="secondary" onClick={() => openEditProduct(product)}>Editar</Button>
                       <Button variant="secondary" onClick={() => deleteProduct(product.id)}>Excluir</Button>
@@ -454,6 +456,7 @@ export default function AdminPage() {
                     <span>
                       Pedido #{o.id} (GFL-{o.id})<br />
                       <small>{o.user_name} - {new Date(o.created_at).toLocaleString('pt-BR')}</small>
+                      {o.items?.length > 0 && <><br /><small className="admin-order-items">{o.items.map((item) => `${item.quantity}x ${item.name}${item.selected_color ? ` (${item.selected_color})` : ''}`).join(' • ')}</small></>}
                       {o.fulfillment_error && <><br /><small className="error-message">{o.fulfillment_error}</small></>}
                     </span>
                     <select
@@ -518,6 +521,8 @@ export default function AdminPage() {
             <option value="">Selecione a categoria</option>
             {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
           </select></label>
+          <label>Cores disponíveis (opcional)<Input placeholder="Ex.: Preta, Azul, Rosa, Verde" value={form.colors} onChange={(e) => setForm({ ...form, colors: e.target.value })} /></label>
+          <small className="admin-field-help">Separe as cores por vírgula. Se houver cores cadastradas, o cliente deverá escolher uma antes de adicionar ao carrinho.</small>
           <label>Imagem principal {editingProduct && '(opcional — mantenha vazio para preservar a atual)'}</label>
           <Input type="file" accept={imageAccept} onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })} />
           <label>Galeria {editingProduct && '(opcional — novos arquivos substituem a galeria atual)'}</label>

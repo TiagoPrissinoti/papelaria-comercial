@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(authMiddleware);
 router.get('/', controller.getCart);
-router.post('/items', allowBodyFields('productId', 'quantity'), controller.upsertItem);
-router.delete('/items/:productId', controller.removeItem);
+router.post('/items', allowBodyFields('productId', 'quantity', 'selectedColor'), controller.upsertItem);
+router.delete('/items/:itemId', controller.removeItem);
 
 module.exports = router;

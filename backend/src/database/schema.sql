@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS products (
   category_id INTEGER,
   image TEXT,
   images TEXT NOT NULL DEFAULT '[]',
+  colors TEXT NOT NULL DEFAULT '[]',
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
@@ -32,10 +33,11 @@ CREATE TABLE IF NOT EXISTS cart (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   product_id INTEGER NOT NULL,
+  selected_color TEXT NOT NULL DEFAULT '',
   quantity INTEGER NOT NULL CHECK(quantity > 0),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, product_id),
+  UNIQUE(user_id, product_id, selected_color),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
@@ -94,6 +96,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INTEGER NOT NULL CHECK(quantity > 0),
   unit_price REAL NOT NULL CHECK(unit_price >= 0),
   cost_price REAL NOT NULL DEFAULT 0 CHECK(cost_price >= 0),
+  selected_color TEXT NOT NULL DEFAULT '',
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 );

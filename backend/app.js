@@ -65,6 +65,7 @@ async function initializeApp() {
   const hasImages = columns.some((column) => column.name === 'images');
   const hasIsActive = columns.some((column) => column.name === 'is_active');
   const hasCostPrice = columns.some((column) => column.name === 'cost_price');
+  const hasColors = columns.some((column) => column.name === 'colors');
   if (!hasImages) {
     await db.exec("ALTER TABLE products ADD COLUMN images TEXT NOT NULL DEFAULT '[]'");
   }
@@ -74,11 +75,43 @@ async function initializeApp() {
   if (!hasCostPrice) {
     await db.exec('ALTER TABLE products ADD COLUMN cost_price REAL NOT NULL DEFAULT 0');
   }
+  if (!hasColors) {
+    await db.exec("ALTER TABLE products ADD COLUMN colors TEXT NOT NULL DEFAULT '[]'");
+  }
+
+  const cartColumns = await db.all("PRAGMA table_info(cart)");
+  if (!cartColumns.some((column) => column.name === 'selected_color')) {
+    await db.exec('PRAGMA foreign_keys = OFF');
+    await db.exec(`
+      BEGIN TRANSACTION;
+      ALTER TABLE cart RENAME TO cart_old;
+      CREATE TABLE cart (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        selected_color TEXT NOT NULL DEFAULT '',
+        quantity INTEGER NOT NULL CHECK(quantity > 0),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, product_id, selected_color),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+      );
+      INSERT INTO cart (id, user_id, product_id, selected_color, quantity, created_at, updated_at)
+      SELECT id, user_id, product_id, '', quantity, created_at, updated_at FROM cart_old;
+      DROP TABLE cart_old;
+      COMMIT;
+    `);
+    await db.exec('PRAGMA foreign_keys = ON');
+  }
 
   const orderItemColumns = await db.all("PRAGMA table_info(order_items)");
   const hasOrderItemCostPrice = orderItemColumns.some((column) => column.name === 'cost_price');
   if (!hasOrderItemCostPrice) {
     await db.exec('ALTER TABLE order_items ADD COLUMN cost_price REAL NOT NULL DEFAULT 0');
+  }
+  if (!orderItemColumns.some((column) => column.name === 'selected_color')) {
+    await db.exec("ALTER TABLE order_items ADD COLUMN selected_color TEXT NOT NULL DEFAULT ''");
   }
 
   const orderTable = await db.get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'orders'");
@@ -204,11 +237,12 @@ async function initializeApp() {
         quantity INTEGER NOT NULL CHECK(quantity > 0),
         unit_price REAL NOT NULL CHECK(unit_price >= 0),
         cost_price REAL NOT NULL DEFAULT 0 CHECK(cost_price >= 0),
+        selected_color TEXT NOT NULL DEFAULT '',
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
       );
-      INSERT INTO order_items (id, order_id, product_id, quantity, unit_price, cost_price)
-      SELECT id, order_id, product_id, quantity, unit_price, cost_price FROM order_items_old;
+      INSERT INTO order_items (id, order_id, product_id, quantity, unit_price, cost_price, selected_color)
+      SELECT id, order_id, product_id, quantity, unit_price, cost_price, selected_color FROM order_items_old;
       DROP TABLE order_items_old;
       COMMIT;
     `);

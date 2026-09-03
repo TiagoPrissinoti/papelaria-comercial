@@ -58,7 +58,8 @@ class Order {
         state: address.state
       };
       const items = await db.all(
-        `SELECT c.product_id, c.quantity, p.name, p.description, p.price, p.cost_price, p.stock, p.is_active
+        `SELECT c.product_id, c.selected_color, c.quantity,
+                p.name, p.description, p.price, p.cost_price, p.stock, p.is_active, p.colors
          FROM cart c
          INNER JOIN products p ON p.id = c.product_id
          WHERE c.user_id = ?`,
@@ -79,6 +80,18 @@ class Order {
         }
         if (item.quantity > item.stock) {
           const error = new Error(`Estoque insuficiente para ${item.name}`);
+          error.status = 400;
+          throw error;
+        }
+        let availableColors = [];
+        try {
+          availableColors = JSON.parse(item.colors || '[]');
+        } catch {
+          availableColors = [];
+        }
+        const colorIsValid = availableColors.some((color) => color === item.selected_color);
+        if ((availableColors.length && !colorIsValid) || (!availableColors.length && item.selected_color)) {
+          const error = new Error(`A cor selecionada para ${item.name} nao esta mais disponivel`);
           error.status = 400;
           throw error;
         }
@@ -113,9 +126,9 @@ class Order {
 
       for (const item of items) {
         await db.run(
-          `INSERT INTO order_items (order_id, product_id, quantity, unit_price, cost_price)
-           VALUES (?, ?, ?, ?, ?)`,
-          [insertResult.lastID, item.product_id, item.quantity, item.price, Number(item.cost_price || 0)]
+          `INSERT INTO order_items (order_id, product_id, quantity, unit_price, cost_price, selected_color)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [insertResult.lastID, item.product_id, item.quantity, item.price, Number(item.cost_price || 0), item.selected_color || '']
         );
       }
 
@@ -140,12 +153,16 @@ class Order {
 
   static async findAll() {
     const db = await getDb();
-    return db.all(
+    const orders = await db.all(
       `SELECT o.*, u.name as user_name, u.email as user_email
        FROM orders o
        INNER JOIN users u ON u.id = o.user_id
        ORDER BY o.created_at DESC`
     );
+    for (const order of orders) {
+      order.items = await this.findItems(order.id);
+    }
+    return orders;
   }
 
   static async findById(orderId) {

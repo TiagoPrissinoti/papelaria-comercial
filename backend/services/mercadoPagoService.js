@@ -61,8 +61,10 @@ function buildReturnUrls(orderId, requestOrigin) {
 function buildPreferenceItems(items) {
   return items.map((item) => ({
     id: String(item.product_id),
-    title: item.name,
-    description: item.description || item.name,
+    title: item.selected_color ? `${item.name} - ${item.selected_color}` : item.name,
+    description: item.selected_color
+      ? `${item.description || item.name} | Cor: ${item.selected_color}`
+      : item.description || item.name,
     quantity: item.quantity,
     currency_id: 'BRL',
     unit_price: Number(item.price)

@@ -13,7 +13,7 @@ router.post(
   authMiddleware,
   isAdmin,
   productUpload,
-  allowBodyFields('name', 'description', 'price', 'costPrice', 'stock', 'categoryId'),
+  allowBodyFields('name', 'description', 'price', 'costPrice', 'stock', 'categoryId', 'colors'),
   controller.create
 );
 router.put(
@@ -21,7 +21,7 @@ router.put(
   authMiddleware,
   isAdmin,
   productUpload,
-  allowBodyFields('name', 'description', 'price', 'costPrice', 'stock', 'categoryId'),
+  allowBodyFields('name', 'description', 'price', 'costPrice', 'stock', 'categoryId', 'colors'),
   controller.update
 );
 router.delete('/:id', authMiddleware, isAdmin, controller.remove);

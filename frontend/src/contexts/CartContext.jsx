@@ -25,16 +25,16 @@ export function CartProvider({ children }) {
     refreshCart();
   }, [token, loading]);
 
-  async function upsertItem(productId, quantity) {
+  async function upsertItem(productId, quantity, selectedColor = '') {
     if (!token) return;
-    const { data } = await api.post('/cart/items', { productId, quantity });
+    const { data } = await api.post('/cart/items', { productId, quantity, selectedColor });
     setItems(data.items);
     setTotal(data.total);
   }
 
-  async function removeItem(productId) {
+  async function removeItem(cartItemId) {
     if (!token) return;
-    const { data } = await api.delete(`/cart/items/${productId}`);
+    const { data } = await api.delete(`/cart/items/${cartItemId}`);
     setItems(data.items);
     setTotal(data.total);
   }
